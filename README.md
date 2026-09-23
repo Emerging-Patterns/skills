@@ -27,6 +27,7 @@ To make every contributor's session in a repo offer it, add this to that repo's
 | Plugin | Skill | What it does |
 | :-- | :-- | :-- |
 | `bend-spec` | `spec-first-feature` | New or changed behavior in a project with SPEC.md and LAWS.bend/PROOF.bend: the requirement row first, then a quantified tagged law, the proof, the status flip, and a clean proof gate plus bolt `trace`. Per-repo detail is in `references/` (bolt rules, ez planners, bringing a sibling library under the convention). |
+| `bend-spec` | `analyze-specify-prove` | Bringing an existing project, or a large area of one, under spec when its docs, laws and behavior disagree: audit every law and run the real binary from a fresh clone, write the RFC and SPEC.md with the maintainer's decisions, then roll out quantified laws and planner conversions across many PRs (optionally with subagents), fixing the bugs found on the way, until `trace` passes and the headline guarantees are proved. ez and bolt are the worked examples. |
 
 ## Changing a skill
 

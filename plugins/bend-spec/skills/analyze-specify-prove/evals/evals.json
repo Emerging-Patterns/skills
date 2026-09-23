@@ -1,0 +1,23 @@
+{
+  "skill_name": "analyze-specify-prove",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "eztoml has a LAWS.bend with like 90 laws and I honestly don't know what any of them prove. most look like `parse(\"a = 1\") == ...`. can you bring eztoml under spec the way we did ez and bolt? SPEC.md, trace, the works.",
+      "expected_output": "Treats this as a whole-project audit, not one feature. Stage 1: an inventory (docs/rfc/eztoml-law-inventory.md) with every law classified Q/C, proof shape ({==} vs struct), a one-line claim and the requirement it points toward, per-file counts and an honest 'what eztoml proves today' paragraph; the gate and pinned bolt run on the tree and recorded; README and TOML 1.0 claims checked against the code with verdicts, confirmed by running a build from a fresh copy on edge inputs. Stage 2: an RFC in we-voice with Draft Status REVIEW items, two levels (Proved/Trusted, pending as status), requirement rows naming TOML 1.0 sections, a trust boundary, and a decision list with a recommendation per item sent to the maintainer before any behavior change. Stage 3 plan: closed laws deleted (recommend all at once, maintainer decides), SPEC.md in bolt's format with Law cells as `<path> <law>` joined by `; `, the proof gate in CI, `closed` and `trace` at error, then quantified laws landed PR by PR, cheap structural rows first, each checked non-vacuous by breaking its proof. Does not write closed laws or tests as evidence; defers per-row work to spec-first-feature.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "snap's tests all pass but people keep hitting bugs with it (spawn exit codes wrong, a hang on big output). our tests clearly don't catch anything. figure out what snap actually guarantees and fix this repo's spec",
+      "expected_output": "Starts from the real binary and code, not the tests: builds snap from a fresh clone (git archive, git init, fill deps, build) and reproduces the reported bugs on small inputs, recording each as Confirmed; traces what each entry point reads and where IO decides something (exit status, buffering); root-causes against the reference behavior (the OS or runtime's documented semantics, or the foreign C/JS source) rather than comments. Inventories existing laws and tests, notes that tests are never evidence for a requirement, and sorts findings into guaranteed-but-unstated, accidental, spec-with-no-code and bugs. Proposes an RFC with requirement rows for exit status and output, Trusted rows for foreign code and the OS with reasons, and a decision list with recommendations for which bugs become rows and which are untagged fixes. Plans to move each decision into a pure function so a quantified law can reach it, with a frame law for failure paths, and to add a CI check that reproduces the bug class. Compares master's binary with the fix branch's for each behavior change.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "ez lock is in planner form now. next up is ez add and ez remove (EZ-LED-1..8, EZ-RES-1, EZ-RES-2, the add half of EZ-VEN-1). plan the conversion and run it with subagents, one PR each, I'll review and merge.",
+      "expected_output": "Reads the RFC, SPEC.md (Left to prove for EZ-LED-6..8 and EZ-VEN-1), the inventory and ez-lock-planner.md as the model. Writes a design doc first: what ez add/remove read today with source lines, a World per command holding only those reads, the Plan/Effect/Outcome (Success{} not Done), an ask/answer loop for remote refs and checkouts, contractual vs incidental output, a law statement per requirement with reuse, effort and replaced laws, a spike proving the riskiest law against bend, open questions as REVIEW items with recommendations for the maintainer, and work packages with a dependency DAG. After acceptance, runs independent packages in parallel: each agent in its own worktree with its own build script and scratch paths, briefed against current master, merging origin/master before reporting. The lead reviews each diff (e.g. no absolute paths in the committed ledger, no edited tagged law statements), verifies from a fresh clone (gate, bolt with trace, fresh-clone cmp, master-vs-branch runs), pushes, opens the PR, reads CI logs to confirm each check ran, and leaves merging to the user as asked. Each landed law is broken on purpose to prove it is not vacuous; EZ-OUT-2's frame law covers add and remove; SPEC.md, RFC and inventory updated in the same PR; no publishing to the hub.",
+      "files": []
+    }
+  ]
+}

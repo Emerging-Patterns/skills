@@ -32,8 +32,9 @@ follow them, because they change faster than this skill does:
   boundary.
 - The bolt the project pins (`[tools.bolt]` in ez.toml, or the flake
   input), not bolt's main. The rule names and codes this skill mentions are
-  current bolt's. ez, for example, stays on v0.9.0 with `quantify` (L004)
-  until its last `# toward` trail is gone, and has no `trace` yet.
+  current bolt's. ez, for example, pins a bolt with strict `closed` and
+  `trace` (both at error since ez#69); a project still on v0.9.0 has
+  `quantify` (L004) instead and no `trace`.
 - `bolt.bend` at the root: is `trace` on, and at what level? Are `closed` (or
   `quantify`) and `coverage` errors? If `trace` is off or at warn, the project hasn't reached
   the consolidation finish line. Do the work the same way anyway, but tell
@@ -47,6 +48,9 @@ Then read the reference file for the repo you're in:
   `references/ez.md`
 - bolt, and especially a new lint rule: `references/bolt.md`
 - a sibling library with no SPEC.md yet: `references/adopting.md`
+- a project (or a large area of one) whose spec, laws and behavior
+  disagree, where the job is the audit and the rollout rather than one
+  feature: the `analyze-specify-prove` skill in this plugin
 
 `scripts/spec_rows.py SPEC.md` lists the rows by group, the pending ones, and
 the next free ID for a prefix. Use it to pick IDs and to check your row
@@ -173,8 +177,8 @@ cell, and say in "Left to prove" what is proved so far and what is missing
 (EZ-VEN-1 is the model). A tagged partial law is checked. An untagged one
 isn't protected by anything.
 What never lands is a feature backed only by examples. That means no closed
-law, no new `# toward` trail (those are migration scaffolding and are being
-deleted), and no `tests/*.bend` for a claim Bend can state. Tests belong
+law, no new `# toward` trail (that was migration scaffolding, and ez and
+bolt have deleted all of theirs), and no `tests/*.bend` for a claim Bend can state. Tests belong
 only to the stay list of host/integration checks named in AGENTS.md, and a
 test is never evidence for a row.
 
