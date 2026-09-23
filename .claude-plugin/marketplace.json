@@ -1,0 +1,11 @@
+{
+  "name": "emerging-patterns",
+  "owner": { "name": "Emerging Patterns" },
+  "plugins": [
+    {
+      "name": "bend-spec",
+      "source": "./plugins/bend-spec",
+      "description": "Spec-first feature work for Bend projects traced by bolt: SPEC.md row, quantified tagged law, proof, trace."
+    }
+  ]
+}

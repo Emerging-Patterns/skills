@@ -1,0 +1,23 @@
+{
+  "skill_name": "spec-first-feature",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "add `ez lock --check` to ez: it should fail with exit 1 if running ez lock would change ez.lock.toml, and write nothing either way. CI wants it.",
+      "expected_output": "A new EZ-DOC (or EZ-OUT) row, Proved/pending, worded for every world; the check designed as the lock planner's plan compared to the current lock with no Write effect; a quantified law tying --check's exit to 'lock plan's text differs from the committed lock' plus a frame law 'the --check plan has no Write/Lay/Remove'; no closed laws, no tests/; row flipped to proved with the Law cell filled, or left pending with a stated plan; gate + bolt trace run; PR summary lists row, laws, trust-boundary delta.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "new bolt rule: flag a law in LAWS.bend whose proof in PROOF.bend is just {==} even though the law has for-binders the statement never looks at. vacuous laws keep sneaking in.",
+      "expected_output": "Header comment written first as the spec; BOLT-RULE row with next code in the right group appended to bolt/codes.bend (no renumbering); opt-in by default; frame law (no finding without the pattern) and completeness law (count equality) tagged with the ID; false-positive run over ez, eztoml, ezhttp, ezjson, snap, shake and bolt reported before any default above warn; notes it is a project rule (reads LAWS+PROOF pair) so CLI-only.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "ez init clobbers an existing ez.toml. fix it",
+      "expected_output": "Recognises this as a missing requirement (not a refactor): adds an EZ-LED/EZ-INIT row such as 'init on a world that has a ledger plans no write'; moves init's decision into a pure planner over a World (ledger present or not) instead of an existence check inside IO; tagged quantified law over worlds; watches proof fail first; does not edit existing tagged law statements; gate + trace.",
+      "files": []
+    }
+  ]
+}
