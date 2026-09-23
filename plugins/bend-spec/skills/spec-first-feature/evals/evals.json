@@ -15,8 +15,8 @@
     },
     {
       "id": 3,
-      "prompt": "ez init clobbers an existing ez.toml. fix it",
-      "expected_output": "Recognises this as a missing requirement (not a refactor): adds an EZ-LED/EZ-INIT row such as 'init on a world that has a ledger plans no write'; moves init's decision into a pure planner over a World (ledger present or not) instead of an existence check inside IO; tagged quantified law over worlds; watches proof fail first; does not edit existing tagged law statements; gate + trace.",
+      "prompt": "ez add ../eztoml from inside ez/ fetches from the wrong directory. fix it",
+      "expected_output": "Reads SPEC.md and finds the decided row (EZ-LED-8: a relative path is kept as typed) instead of inventing a new one; puts the decision in a pure planner/helper over explicit inputs (cwd, target) rather than inside IO; a tagged quantified law over every relative target and cwd; watches the proof fail first; leaves existing tagged law statements alone; runs ez prove, the non-nix readme gate if the build is touched, and bolt at ez's pinned version (quantify, not trace).",
       "files": []
     }
   ]
