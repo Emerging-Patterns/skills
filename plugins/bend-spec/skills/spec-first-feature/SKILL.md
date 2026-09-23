@@ -185,13 +185,15 @@ The Law cell lists every law as a `<path> <law>` entry relative to SPEC.md,
 entries separated by `; ` (`ez/LAWS.bend a; ez/LAWS.bend b`, not
 `ez/LAWS.bend a, b`). If "Left to prove" had a row for it, delete that row.
 
-`trace` reports a proved row whose law is missing, has no binder, or lacks
-the tag. bolt's `trace` as released also reports a tag on a pending row,
-and a Law cell on a pending row. That clashes with partial laws above, and
-the intended fix is in the rule, which should check tags on a pending row
-the same way it checks a proved row. Until the project's pinned bolt has
-that fix, a project that tags partial laws can't run `trace` at error. Say
-so to the user, and don't untag partial laws to get it green.
+`trace` checks every Law entry of a Proved row, proved or pending, the same
+way: it reports one whose law is missing, has no binder, or lacks the tag.
+It also reports a proved row with an empty Law cell, a Trusted row with a
+Law cell, and a tag naming a Trusted row or an ID SPEC.md doesn't list. A
+tag on a pending row and a Law cell on a pending row are fine: that is how
+partial laws are traced. This is bolt v1.2.0 and later. An older pinned bolt
+reports both, so a project that tags partial laws needs its bolt pin at
+v1.2.0 or newer to run `trace` at error. If the pin is older, say so to the
+user and propose the bump; don't untag partial laws to get it green.
 
 ## 7. Run the gate, read every finding
 
