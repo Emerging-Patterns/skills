@@ -57,8 +57,10 @@ near-duplicate:
 - **EZ-LED-8**: a relative path target is kept in the ledger as typed.
 - **EZ-OUT-2**: a refused command writes nothing. This is the frame law
   every command gets. A command whose plan can be `Refused` needs the law
-  "a refused plan has no `Write`, `Lay` or `Drop` effect". When you add an
-  Effect constructor that writes, add it to that law.
+  "a refused plan writes nothing" (`lock_refusal_writes_nothing`:
+  `P.writes(P.plan(w)) == False{}` whenever `P.refuses(w)`). When you add an
+  Effect constructor that writes or removes (WP2 adds `Drop`), make
+  `writes.one` count it, or the law stops covering it.
 
 Some accidental behavior was fixed without becoming a row: `.ez` and `bin`
 being created in the current directory, and `ez doctor` failing a project
@@ -103,15 +105,19 @@ add the row.
   `BEND_LIB=$PWD/.ez/lib bend ez/main.bend -o bin/ez.bin`, then
   `bin/ez.bin prove`. Run this too when a change touches bootstrap, the
   build, or the lock.
-- bolt: ez pins v0.9.0 (`[tools.bolt]` in ez.toml), where binderless laws
-  are `quantify` (L004), not `closed`, and there is no `trace` yet. It stays
-  on that pin until the last `# toward` trail is gone.
+- bolt: ez pins a bolt main commit with bolt#106 (`[tools.bolt]` in
+  ez.toml), with `closed` (L002, strict) and `trace` (L005) at error in
+  `bolt.bend`, and `laws` at warn for `coverage` advice. `trace` checks
+  SPEC.md against the tags on every whole-tree lint.
 
 Never run `ez publish` or `bend --publish`. An upload is public and can't be
 undone.
 
 ## Migration leftovers
 
-`# toward EZ-X-N` trails are closed laws kept during consolidation. Don't
-add new ones. If your change lands a quantified law for a row that has a
-trail, delete the trail in the same change.
+ez had `# toward EZ-X-N` trails, closed laws kept during consolidation. All
+of them were deleted in ez#69 and strict `closed` forbids new ones, so a
+pending row's statement lives in SPEC.md, the RFC and the design docs only.
+
+ez has no AGENTS.md. Its Bend gotchas are collected in the
+analyze-specify-prove skill's `references/bend-gotchas.md`, in this plugin.

@@ -25,4 +25,10 @@ the feature, not mixed into one.
    point its Trusted row at your requirement IDs instead of at "the library
    is correct".
 
+This is the short form, for a library whose laws are few and mostly
+quantified already. When the inventory turns up many closed laws, IO
+decisions no law can reach, or behavior the maintainer has to rule on, use
+the `analyze-specify-prove` skill instead: it covers the full audit, the
+RFC and the rollout.
+
 After this, new features in the project follow SKILL.md like any other.
