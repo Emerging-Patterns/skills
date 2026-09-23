@@ -75,5 +75,11 @@ its row should say CLI only if that matters to users.
 
 ## Never
 
-No `bend --publish` and no `ez publish`, not even to test. To exercise the
-publish path without publishing, use `BEND_HUB=http://127.0.0.1:1`.
+No `bend --publish` and no `ez publish`, not even to test. AGENTS.md's way
+to exercise the publish path is `BEND_HUB=http://127.0.0.1:1`. Know its
+limits before you use it. It avoids a real upload only while nothing
+listens on that port. It still runs the whole pre-upload path, including
+bend's roughly 25-second proof-of-work, before the connection fails. And it
+shows only that the upload failed, not what would have been sent. Check
+that the port is dead first. Don't use it in a loop, and don't count it as
+evidence for a publish requirement.

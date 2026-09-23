@@ -1,6 +1,6 @@
 ---
 name: spec-first-feature
-description: Add or change behavior in a Bend project that keeps a SPEC.md traced by bolt (ez, bolt, and siblings such as eztoml, ezhttp, ezjson, snap, shake) the spec-first way. The SPEC.md requirement row comes first, then a quantified law in LAWS.bend, the proof in PROOF.bend, the tag and status flip, and a clean proof gate plus bolt `trace` run. Use this whenever the task is a new command, flag, lint rule, library function or guarantee, a change to what an existing one does, or a fix for a bug where the program decided the wrong thing, in any repo with SPEC.md and LAWS.bend/PROOF.bend files. Use it even when the user only says "add X to ez", "new bolt rule for Y" or "fix ez init overwriting the ledger", without mentioning specs or laws.
+description: Add or change behavior in a Bend project that keeps a SPEC.md traced by bolt (ez, bolt, and siblings such as eztoml, ezhttp, ezjson, snap, shake) the spec-first way. The SPEC.md requirement row comes first, then a quantified law in LAWS.bend, the proof in PROOF.bend, the tag and status flip, and a clean proof gate plus bolt `trace` run. Use this whenever the task is a new command, flag, lint rule, library function or guarantee, a change to what an existing one does, or a fix for a bug where the program decided the wrong thing, in any repo with SPEC.md and LAWS.bend/PROOF.bend files. Use it even when the user only says "add X to ez", "new bolt rule for Y" or "fix ez add fetching a relative path from the wrong directory", without mentioning specs or laws.
 ---
 
 # Spec-first features in ez + bolt projects
@@ -8,7 +8,8 @@ description: Add or change behavior in a Bend project that keeps a SPEC.md trace
 In these projects a behavior is guaranteed only if SPEC.md names it and a
 quantified law proves it (or the trust boundary names it). bolt's `trace`
 rule (L005, BOLT-LAW-5) checks mechanically that the SPEC.md rows and the law
-tags agree, and `closed` (L002) rejects laws with no binder. Together they
+tags agree, and `closed` (L002) rejects laws with no binder (`quantify`,
+L004, in bolt v0.9.0 and older pins). Together they
 make "is this feature trustworthy?" a question the gate answers. So new work
 is done in an order that lets the gate answer it: requirement, then law, then
 code.
@@ -29,8 +30,12 @@ follow them, because they change faster than this skill does:
 - `SPEC.md`: the Format/Tagging section (the exact table headers, ID
   pattern, tag placement), the group your change belongs in, and the trust
   boundary.
-- `bolt.bend` at the root: is `trace` on, and at what level? Are `closed` and
-  `coverage` errors? If `trace` is off or at warn, the project hasn't reached
+- The bolt the project pins (`[tools.bolt]` in ez.toml, or the flake
+  input), not bolt's main. The rule names and codes this skill mentions are
+  current bolt's. ez, for example, stays on v0.9.0 with `quantify` (L004)
+  until its last `# toward` trail is gone, and has no `trace` yet.
+- `bolt.bend` at the root: is `trace` on, and at what level? Are `closed` (or
+  `quantify`) and `coverage` errors? If `trace` is off or at warn, the project hasn't reached
   the consolidation finish line. Do the work the same way anyway, but tell
   the user the gate won't catch a mismatch.
 - `docs/rfc/*-spec.md`: the World/planner design and the decided behavior
@@ -57,6 +62,7 @@ Which of these it is decides what you are allowed to edit:
 | Change to a guaranteed behavior | The row's wording. This is a behavior change, so say so in the PR | The tagged law's statement, to match the new row |
 | Bug where code breaks a Proved row | Nothing | Nothing. The law was pending, or the bug is in trusted code. Find out which |
 | Bug where the requirement was missing or wrong | New or reworded row | New tagged law that would have caught the bug |
+| Accidental behavior not worth guaranteeing | Nothing. Note it in the law inventory (`docs/rfc/*-law-inventory.md`) | Fix it, with an untagged quantified law |
 | Refactor | Nothing | Nothing tagged. Proofs may be rewritten, untagged laws may change |
 
 The refactoring contract behind this: a tagged law's statement in LAWS.bend
@@ -64,6 +70,13 @@ is human-owned. It changes only when its SPEC.md row changes. Never edit one
 to make a proof pass. If the proof won't go through, the code or the plan is
 wrong, not the claim. Moving a row from Proved to Trusted weakens a
 guarantee, so it is also a behavior change that needs review.
+
+Not every bug earns a row. A row is a promise to keep the behavior forever.
+If the old behavior was an accident and nobody should rely on the new one
+either, fix it without a row: ez did this for `.ez`/`bin` being created in
+the current directory, and for `ez doctor` on a project with no deps. Ask
+the user when it isn't clear which kind a bug is. Padding SPEC.md with
+incidental rows makes the real guarantees harder to find.
 
 ## 2. Write the requirement row first
 
@@ -153,6 +166,12 @@ Most failed checks are one of those, not a real problem with the law.
 
 If the proof can't land in this change, the row lands `pending` with a
 stated plan: ez's "Left to prove" table, or an issue linked from the PR.
+
+Pending with partial laws is a normal state, not a failure. When a law
+proves part of a pending row, tag it with the row's ID, list it in the Law
+cell, and say in "Left to prove" what is proved so far and what is missing
+(EZ-VEN-1 is the model). A tagged partial law is checked. An untagged one
+isn't protected by anything.
 What never lands is a feature backed only by examples. That means no closed
 law, no new `# toward` trail (those are migration scaffolding and are being
 deleted), and no `tests/*.bend` for a claim Bend can state. Tests belong
@@ -161,11 +180,18 @@ test is never evidence for a row.
 
 ## 6. Flip the row
 
-In the same change that lands the proof: status `proved`, and the Law cell
-lists `<path> <law>` entries relative to SPEC.md, separated by `; `. If
-"Left to prove" had a row for it, delete that row. `trace` reports a proved
-row whose law is missing, has no binder, or lacks the tag. It also reports a
-tag on a row that is still pending, so the flip and the tag go together.
+When the last law for the row lands, set status `proved` in the same change.
+The Law cell lists every law as a `<path> <law>` entry relative to SPEC.md,
+entries separated by `; ` (`ez/LAWS.bend a; ez/LAWS.bend b`, not
+`ez/LAWS.bend a, b`). If "Left to prove" had a row for it, delete that row.
+
+`trace` reports a proved row whose law is missing, has no binder, or lacks
+the tag. bolt's `trace` as released also reports a tag on a pending row,
+and a Law cell on a pending row. That clashes with partial laws above, and
+the intended fix is in the rule, which should check tags on a pending row
+the same way it checks a proved row. Until the project's pinned bolt has
+that fix, a project that tags partial laws can't run `trace` at error. Say
+so to the user, and don't untag partial laws to get it green.
 
 ## 7. Run the gate, read every finding
 
@@ -177,7 +203,8 @@ From the repo root, inside `nix develop`:
 2. bolt over the whole tree (`bolt`, no file arguments, because `trace` only
    runs on a whole-tree lint). In bolt, lint with the binary this tree just
    built, not the one on PATH.
-3. `nix flake check`, which is what CI runs.
+3. `nix flake check`, which is what CI runs, and any job CI runs without
+   nix. The repo's reference file and CI workflow list them.
 
 Fix every finding. Don't lower a level in bolt.bend to get green. That is a
 policy change for the user to decide, not a fix.

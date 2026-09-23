@@ -62,6 +62,13 @@ def next_id(ids, pre):
     if code:
         width = len(code[0].group(1))
         return f"{pre}{str(max(int(m.group(1)) for m in code) + 1).zfill(width)}"
+    # no rows yet: a code-style group (BOLT-RULE-C, while BOLT-RULE-U013 exists)
+    # starts at 1 in its siblings' width; anything else starts at PREFIX-1
+    parent, _, last = pre.rpartition("-")
+    if parent and re.fullmatch(r"[A-Z]", last):
+        sib = [m for m in (re.match(re.escape(parent) + r"-[A-Z](\d+)$", i) for i in ids) if m]
+        if sib:
+            return f"{pre}{'1'.zfill(len(sib[0].group(1)))}"
     return pre + "-1"
 
 
