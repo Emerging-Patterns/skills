@@ -5,7 +5,7 @@
     {
       "name": "bend-spec",
       "source": "./plugins/bend-spec",
-      "description": "Spec-first work for Bend projects traced by bolt: audit a project and roll out proofs until SPEC.md is trace-checked, then add features as SPEC.md row, quantified tagged law, proof, trace."
+      "description": "Spec-first work for Bend projects traced by bolt: audit a project and roll out proofs until SPEC.md is trace-checked, then add features as SPEC.md row, quantified tagged law, proof, trace; speed one up without weakening a law."
     }
   ]
 }
