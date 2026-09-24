@@ -164,6 +164,43 @@ frame laws, both directions for "exactly"). At rollout scale, also:
 - **A law can be partial.** Tag it with the row's ID, list it in the Law
   cell, and say what is left in "Left to prove". A tagged partial law is
   checked by `trace`; an untagged one is protected by nothing.
+- **Isolate the catch.** A mutant that an older law already catches fails
+  the gate there first, which says nothing about the new law. Run
+  `scripts/isolate_mutant.py` in a scratch copy to see the new proof fail
+  by itself, and name both in the PR ("fails `wk.walk_plain` first, and
+  `values_given`'s own proof with the earlier laws set aside").
+
+### Laws over a state machine (shake's walker)
+
+A parser, a tokenizer or any fold over input is a state machine, and
+replaying the whole input in each law does not scale. shake's walker laws
+took these shapes, and every row of its parse group was proved with them:
+
+- **Premise form.** A step law holds wherever the words before leave the
+  walker in the state it names: `for pre, st, h_at: {walk(pre, start) == st}`,
+  then the claim about the next word from `st`. It never replays `pre`, and
+  it covers every reachable state at once (REVIEW-W1 in shake's
+  `docs/rfc/shake-walker-proofs.md`).
+- **One lemma per arm, composed along the dispatch.** For each function
+  the step dispatches through, a lemma with that function's parameters
+  plus the invariant's premises, proved by matching its first Bool or
+  constructor and calling the next arm's lemma. The arm lemmas are long
+  but mechanical; shake has two families (`gw.*` for the shape of the
+  state, `gv.*` for the values in it).
+- **A walk invariant as a Bool.** `good(st, ws) == True` kept by every arm
+  (`gv.step`), so by every walk (`gv.walk`, induction on the words with
+  the words before as a list that grows), then read at the end through the
+  finished state's frame. A Bool invariant copies and splits with
+  `and`/`or` lemmas; a sigma or a function premise does neither (see
+  bend-gotchas.md).
+- **Frame premises for "the command at this path".** When a law is about
+  one part of the final result, take the final state's split as a premise
+  (shake's `fin.Framed`: the finished frame is `qs ++ Level{args, bs} <>
+  up` under `path ++ ms`) and prove one lemma that reads that part of the
+  result from it (`fin.at`). Every per-command law then reuses it.
+- **Refusals through one lemma.** A step that fails leaves the walker
+  failed for the rest of the words (`fail_stays`), so each refusal law is
+  "this step fails from the state named", through one general `refused`.
 
 ## Linter rules as requirements
 
