@@ -1,0 +1,23 @@
+{
+  "skill_name": "perf-under-proof",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "bolt has become really slow now that it's fully specced. auto research lint performance, but don't commit the tracking docs to main -- put them on an autoresearch branch. fixes can go to main.",
+      "expected_output": "Two branches: autoresearch/<topic> with the TSV, summary, verify/guard scripts and bench programs (pushed, no PR), and a fix branch with one perf(...) commit per kept change carried over with the autoresearch paths excluded, byte-identical code checked. Metric is native bolt --gpu off over the repo tree built from HEAD; guard is every PROOF.bend checking plus findings equal to baseline modulo line:col. Profiles the biggest file per stage/rule with a bench program before changing anything; each change is proven equal for every input (no LAWS.bend edits); discarded ideas are logged with numbers; generalizable shapes become bolt rule issues.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "the unused rule is quadratic on big proof files. make it fast.",
+      "expected_output": "Identifies the per-binder scan over all uses; builds an index whose hit is sound and falls back to the original scan on a miss, gated lazily to reportable binders; proves soundness (or-absorption) rather than completeness so no U32/String order laws are needed; updates only PROOF.bend (the tagged law's statement is untouched); shows the stage time before/after on the biggest file and the full-run metric; guard passes.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "name resolution in syntax/bind.bend is the last big cost. can we put the items in a map?",
+      "expected_output": "Checks which laws pin resolution (syntax/LAWS.bend resolves/uses state it over Names{its, als} with its a List<String>) and explains that an index needs the law restated, which is the human's call; does not add a second constructor or path that the law doesn't cover; offers the law change with what it would buy, and meanwhile takes only the legal wins (cheaper proven equality, early exit, shrinking the list where it is built) with measurements.",
+      "files": []
+    }
+  ]
+}
