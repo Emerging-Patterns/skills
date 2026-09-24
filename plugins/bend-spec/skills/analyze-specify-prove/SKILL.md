@@ -220,6 +220,12 @@ ez and bolt found. The habits that matter:
   longer exists in bend 2.0.25.
 - When a proof will not go through, read `references/bend-gotchas.md`
   before doubting the law. Most failures are one of those.
+- Plant the bug a law is meant to catch and watch it fail there. When an
+  older law fails first, `scripts/isolate_mutant.py` shows whether the new
+  one catches it by itself.
+- Stating a law precisely is itself a bug hunt: shake's PARSE-5 and
+  PARSE-10 laws each found a walker bug, and PARSE-1's found its own row
+  wrong about flags. Fix the code (or the row) first, in the same PR.
 
 ## Running it with subagents
 

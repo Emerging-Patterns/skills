@@ -63,6 +63,14 @@ itself:
   mtimes, before and after;
 - "the proof checks something": replace it with `{==}` and watch the gate
   fail.
+- "the new law catches this bug": plant the bug (a mutant of the code) and
+  watch the gate fail *in the new law's proof*. The gate stops at the first
+  error, so an older law that already catches the mutant hides whether the
+  new one does. `scripts/isolate_mutant.py` answers it: in a scratch copy
+  with the mutant planted, it replaces each earlier failing def with
+  `?TODO` until the first failure lands in the new proof (caught) or none
+  is left (not caught). shake used it to show `values_given` catches a
+  truncating walker on its own, although `wk.walk_plain` fails first.
 
 ## Root-causing a disagreement with another tool
 
@@ -109,6 +117,11 @@ where bugs hide.
 | bolt's `shadow` rule guarded against a failure bend 2.0.25 no longer has | trying the pattern in the pinned bend | the rule retired, its code reserved |
 | bolt's rules each had a false positive or negative against their header | a scratch project per rule | per-rule fixes, each proving the rule's row |
 | bolt's `main` had no branch protection, so the gate bound nothing | the GitHub API | a Trusted row that holds once a maintainer adds the ruleset |
+| shake checked an option's value against the choices of a parent's argument of the same name | stating PARSE-5's law over the current command's arguments | fix first, then the law |
+| shake's short cluster revived a failed walker: `greet -vvn Ada` succeeded although the second `-v` was refused | stating PARSE-10's law per letter | fix (`cluster.apply.mode` keeps a failure), then `cluster_dead` |
+| shake's PARSE-1 row said every binding is a piece of a word or a default; a flag binds `true`, which is neither | writing the law's predicate | the row reworded, in the same PR as the law |
+| a compiled Bend program's runtime takes the first `--`, `--help`, `--threads` and `--gpu` before `main` runs, so `tool add -- -5 3` never reaches shake as written | running the demo binary with each | a Trusted row (SHAKE-TRUST-2) and the README's `-- --` note; any Bend CLI needs both |
+| shake's planted truncation bug (drop the seventh char of every value) passed every closed law | planting it | caught once the value laws landed; see "the new law catches this bug" above |
 
 ## Turning a manual check into CI
 

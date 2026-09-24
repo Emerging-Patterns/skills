@@ -21,7 +21,17 @@ the feature, not mixed into one.
 4. **Turn on the rules.** In the root bolt.bend, add `def trace() -> String:
    "error"` and `def closed() -> String: "error"`. Get `bolt` clean over the
    whole tree.
-5. **Downstream.** A project that depends on this one (usually ez) can now
+5. **Layout and pins.** Current ez expects `main.bend` at the root as the
+   whole interface and every other file under `src/`: consumers import only
+   `main.bend`, and everything under `src/` may change in any release
+   (shake and ezjson are laid out this way). Mark each IO def
+   `# noqa: L001 IO` so `coverage` does not ask for a law no one can state.
+   Pin the linter in the lock (`[tools.bolt]` in ez.toml) and relock with
+   the pinned ez, so CI's bolt is the one you ran. A command-line program
+   also needs a Trusted row for what the compiled Bend runtime does to argv
+   before `main` (it takes the first `--`, `--help`, `--threads` and
+   `--gpu`; shake's SHAKE-TRUST-2), and its README must say so.
+6. **Downstream.** A project that depends on this one (usually ez) can now
    point its Trusted row at your requirement IDs instead of at "the library
    is correct".
 

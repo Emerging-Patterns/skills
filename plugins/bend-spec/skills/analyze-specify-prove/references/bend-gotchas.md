@@ -56,6 +56,60 @@ list.
 - A self-call must shrink the same argument every time, and it must be the
   first live parameter.
 
+## Proof terms: syntax and copying (shake, bend 2.0.27)
+
+These cost shake's walker proofs most of their failed checks.
+
+- **A dependent function type is `@x: A -> B`** (a sigma is `&x: A -> B`).
+  `(x: A) -> B` and `∀` do not parse. Write a premise that quantifies as
+  `@vv: String -> {P(vv) == True{} : Bool} -> {Q(vv) == True{} : Bool}`.
+- **Only Data copies.** `+` works on Data values and on equalities written
+  out as `{a == b : T}`, but not on functions, pairs (`A & B` is Type),
+  or a value whose type is a def returning `Type` (`gv.In(w, ws)` with
+  `def gv.In(...) -> Type`), even when that def's body is an equality.
+  When a premise must be used twice (a split with both `and_l` and `and_r`,
+  or a recursive call and a use), state it as a Boolean equality with its
+  type written out: `+hh: {gv.sufs(ww, ws) == True{} : Bool}`. A
+  Pi-typed premise cannot be copied at all, so shake turned "every suffix
+  of `w` is a piece of the words" into a Bool (`gv.sufs`) instead of a
+  function premise.
+- **A copied `let` needs its type**: `+hi = {f(x) : {g(x) == True{} : Bool}}`
+  and `+fr = {Grow.Frame{...} : Grow.Frame}`. Without the annotation it
+  fails with "expected Data, observed Type" or "cannot infer".
+- **Binders in lambdas and Nat patterns take `+` too**: `+vv => hv => ...`,
+  `case SCon{+cc, +tt} 1n+(+pp):`.
+- **A `let` before a `match` blocks the match** ("a match on a parameter or
+  field"). Put the let inside each case, or move the derived fact into a
+  helper def that each case calls.
+- **`%e : P` turns a goal of the form `P[b]` into `P[a]`** for
+  `e : {a == b : T}`. When it reports expected and observed swapped, rewrite
+  with `Equal.sym(T, a, b, e)` instead.
+- **Refute a clash through a motive.** `SNil == SCon{c, t}`: define
+  `snil_ty(s) -> Type` (SNil to Unit, SCon to Empty), `%e : snil_ty(_)`,
+  answer `Unit{}`. For Bools, `Walk.wk.false_true`-style
+  `{False == True} -> Empty` then `Empty.absurd(Goal, ...)`.
+- **Constructor injectivity by `Equal.cong` with a projection**: from
+  `SCon{d, u} == SCon{c, t}` get `u == t` as
+  `Equal.cong(String, String, s => tail(s), ...)`.
+- **Matching a Bool parameter refines premises that mention it**, so a
+  helper `f(b: Bool, ..., h: {g(b) == True{} : Bool})` with `match b:` sees
+  `h` at `g(True{})` and `g(False{})`. This is how every case split on a
+  computed Bool goes: pass the computed value as the parameter.
+- **Decidable predicates beat existentials in law statements.** A law
+  whose conclusion is `{p(x) == True{} : Bool}` for a law-side Bool `p`
+  (`ends`, `piece`, `all_given`) reads plainly, copies, and composes with
+  `and`/`or` lemmas; a sigma-typed conclusion does none of these.
+- **Avoid needing `String.eq` true to equality** when a structural
+  statement will do. shake's "what is left of a word once chars are
+  dropped" is proved through `String.drop` and `ends_self` (reflexivity
+  only), so no soundness lemma is needed. When one is, ez's
+  `check/str.bend` has `string_eq_true`.
+- **Per-type lemma copies add up.** List append associativity, reversal
+  onto an accumulator and `drop` lemmas get rewritten for each element type
+  (`gw.app` for bindings, `sc.app` for names). Before writing one, look for
+  it in the project's lemma module and ez's `check/str.bend`, and put a new
+  one there rather than beside its first use.
+
 ## Running
 
 - **A big pure walk can overflow the interpreter's stack and still run
@@ -76,3 +130,18 @@ Run every PROOF.bend and require the exact first line `All terms check.`
 (`ez prove` in ez). Proofs are slow on large files (bolt's closed-law
 PROOFs took 84 s and 34 s); run them in parallel under a memory cap, as
 `ez prove` does, rather than serially.
+
+## Lint on proof files
+
+Current bolt lints PROOF.bend like code. The findings that recur on new
+proofs:
+
+- S003: a def header over 120 chars, or a wrapped header that is not one
+  parameter per line. Write
+  `def f(\n  a: A,\n  b: B\n) -> {...}:`; when the return type alone
+  is too long, give it a type alias def (`def fin.Framed(...) -> Type:`).
+- S004: a parameter named with one letter. Use two or more (`vv`, `wd`).
+- U001: an unused parameter. Prefix it with `_` (a law's proof def takes
+  every binder, so `_name` for the ones the proof ignores).
+- C003: `Bool.pick` with a recursive call in a branch evaluates both
+  branches; split into a helper that matches.
