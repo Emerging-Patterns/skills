@@ -59,6 +59,17 @@ updated in one final pass.
   empty HOME, and run the README checks with that `bend` first on PATH. The
   `vX.Y.Z` tag of bend's flake can still package the previous release
   archive, so it is not a reliable way to get the new bend.
+- A new bend can break the tools before the packages. On 2.0.28 neither ez
+  1.2.0 nor bolt 1.8.0 built, and every package's CI builds both, while ez and
+  bolt import the very packages waiting on that CI. Break the loop in each
+  package flake: the `ez` input stops following `bend` and pins
+  `inputs.bend.url` to the rev ez's own `flake.lock` records (without a rev,
+  nix resolves bend's latest and nothing changes), and `packages.bolt` drops
+  `inherit bend`. ez, `ez prove` and `mkLint`'s bolt then run on the old
+  bend, and the package's own builds on the new one. Say in the PR that the
+  proofs were also run on the new bend by hand, since CI no longer does it.
+  The CI then goes green without admin merges, and the tools move to the new
+  bend when their own releases do.
 - Check branch protection is uniform. Each package repo should carry the same
   ruleset: PR required, `check / check` required, no force-push or deletion,
   squash only, auto-merge on, delete branch on merge. Fix drift with
@@ -67,6 +78,11 @@ updated in one final pass.
   two fields switch `ez publish` to named publishing (`bend … --publish
   name@version`), which the hub gates. Without them ez runs a bare
   `bend <entry> --publish`, which is hash only.
+  Names are still gated after bend 2.0.28: the hub registers 12 to 64
+  characters, auctions 3 to 11 (Bender credits), and refuses shorter ones.
+  Every fleet name is short, and `ez` can never be one. Ask the hub before
+  planning a named publish: `GET $BEND_HUB/publish-check?name=N&version=V`
+  with the `bend login` key as a bearer token is read-only.
 
 ## 1. What "latest" means
 
@@ -126,8 +142,19 @@ For each package in order:
    required check never reports. Close and reopen the PR as yourself
    (`gh pr close N && gh pr reopen N`), enable auto-merge, and wait for the tag
    and GitHub release.
+   If release-please rewrites the PR after you reopen it (another merge
+   landed), the check again never reports: reopen it once more.
+   **No release PR at all** after a `fix:` merge means release-please could
+   not parse the squash commit: its log says `commit could not be parsed`.
+   A body line such as `io_eff(CID(Name), run, need)` reads as a footer. Add
+   `BEGIN_COMMIT_OVERRIDE` / `fix: …` / `END_COMMIT_OVERRIDE` to the merged
+   PR's body and re-run the release-please workflow run.
 6. **Publish** the tag: `EZ=<current ez> scripts/publish_hash.sh <repo> <tag>`.
-   Record `repo tag hash`. Publishing is public and permanent, but
+   Record `repo tag hash`. ez's nix package wraps `ez` with the bend it was
+   built with first on PATH, so `ez publish` runs that bend, not yours. The
+   walk and the hash are the same, and ez refuses a disagreement, but check
+   the published package with the new bend afterwards (step 5).
+   Publishing is public and permanent, but
    content-addressed, so re-publishing the same tag is harmless and returns the
    same hash. The repos' own `publish` workflow (`workflow_dispatch`, input
    `tag`) is fine **only once that repo's flake pins a current ez and bend**.
