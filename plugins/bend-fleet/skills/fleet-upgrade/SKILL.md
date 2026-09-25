@@ -50,6 +50,15 @@ updated in one final pass.
   this run must come from that pair. An older ez or bend walks packages
   differently (Bend 2.0.27 added LICENSE to the walk), and then the hash ez
   computes disagrees with the one bend uploads.
+- Pin bend deliberately. Update only the inputs you mean to: `nix flake
+  update ez`, not `nix flake update`, which also moves `bend`. A bend release
+  can land in the middle of a run, as 2.0.28 did, with new name rules, a Base
+  `Set`, and a new JS effect registration. Moving to a new bend is its own
+  pass across the whole fleet, with its own releases. When one ships, test
+  what a new user gets. Install it with the official `install.sh` into an
+  empty HOME, and run the README checks with that `bend` first on PATH. The
+  `vX.Y.Z` tag of bend's flake can still package the previous release
+  archive, so it is not a reliable way to get the new bend.
 - Check branch protection is uniform. Each package repo should carry the same
   ruleset: PR required, `check / check` required, no force-push or deletion,
   squash only, auto-merge on, delete branch on merge. Fix drift with
@@ -125,6 +134,12 @@ For each package in order:
    Until then it builds with the stale pins and fails with
    `ez computed 0x… and bend published 0x…`, and bend has already uploaded an
    orphan under the old walk.
+   **`manifest` is reserved at a package's root.** The hub serves each
+   package's own manifest at `<hash>/manifest`, and it refuses a package
+   with a top-level `manifest/` directory (`EISDIR … /srv/hub/stage/…/manifest`).
+   Rename the directory; ez's `manifest/` became `ledger/` in 1.2.0.
+   Reproduce hub questions with the real package, or with a refused upload.
+   Each successful test upload is permanent and public.
 7. A hash that did not change is fine when the entry's walk didn't change,
    e.g. ezhttp's `json.bend` is only reached from LAWS, so bumping ezjson left
    ezhttp's hub package identical. Say so rather than assume a mistake.
@@ -170,7 +185,11 @@ of the hash):
 - **Install** leads with plain Bend: no install step, just
   `import 0x<hash>/main.bend as X`, which bend fetches from the hub on first
   run. Name the version the hash is. ez (`ez add <org>/<repo>`) comes second.
-- A **tool** (bolt, ez) can be built from the hub with nothing but bend: a
+- The hub package is the walk from `[package] entry`. For ez that is the
+  ledger library, not the `ez` binary, so ez's README shows importing the
+  library, and the tool is still built from a clone. bolt's entry is its
+  program, so bolt can be built from the hub:
+- A **tool** whose entry is its program can be built from the hub with nothing but bend: a
   file holding `import 0x<hash>/main.bend as T` and `def main() -> IO(Unit):
   T.main()`, then `bend t.bend -o t.bin`. Lead with that, then the clone
   build.

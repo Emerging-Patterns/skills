@@ -15,7 +15,13 @@ if sed -n '/^\[package\]/,/^\[/p' ez.toml | grep -qE '^(publish-as|version)[[:sp
   echo "$repo $tag: ez.toml [package] sets publish-as/version; refusing (named publish)" >&2
   exit 2
 fi
-if [ -f ez.lock.toml ] && grep -q '^\[packages\.' ez.lock.toml; then
+# the hub serves a package's own manifest at <hash>/manifest, and refuses a
+# package with a top-level manifest/ directory (EISDIR while staging)
+entry=$(sed -n '/^\[package\]/,/^\[/{s/^entry *= *"\(.*\)"/\1/p}' ez.toml | head -1)
+case "${entry:-main.bend}" in
+  manifest/*) echo "$repo $tag: the entry is under manifest/, a name the hub reserves; rename the directory" >&2; exit 3 ;;
+esac
+if [ -f ez.lock.toml ] && grep -qE '^\[packages[.\]]' ez.lock.toml; then
   mkdir -p .ez/lib
   BEND_LIB=$PWD/.ez/lib "$ez" fetch >/dev/null
 fi
