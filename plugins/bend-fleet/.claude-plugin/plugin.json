@@ -1,0 +1,6 @@
+{
+  "name": "bend-fleet",
+  "version": "0.1.0",
+  "description": "Keep a fleet of ez-managed Bend repos (ez, bolt, shake, snap, ezjson, eztoml, ezhttp, ezimg, ezaudio) on each other's latest releases: bump, release, publish to the hub by hash, and keep READMEs working for plain Bend users.",
+  "author": { "name": "Emerging Patterns" }
+}

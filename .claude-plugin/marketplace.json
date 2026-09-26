@@ -1,11 +1,18 @@
 {
   "name": "emerging-patterns",
-  "owner": { "name": "Emerging Patterns" },
+  "owner": {
+    "name": "Emerging Patterns"
+  },
   "plugins": [
     {
       "name": "bend-spec",
       "source": "./plugins/bend-spec",
       "description": "Spec-first work for Bend projects traced by bolt: audit a project and roll out proofs until SPEC.md is trace-checked, then add features as SPEC.md row, quantified tagged law, proof, trace; speed one up without weakening a law."
+    },
+    {
+      "name": "bend-fleet",
+      "source": "./plugins/bend-fleet",
+      "description": "Upgrade ez-managed Bend packages to each other's latest releases, one package or the whole fleet: bump deps leaves first, release, publish to the hub by hash, update flake ez and [tools.bolt] pins, and verify READMEs as a plain Bend user."
     }
   ]
 }
