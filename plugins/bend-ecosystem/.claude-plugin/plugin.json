@@ -1,0 +1,6 @@
+{
+  "name": "bend-ecosystem",
+  "version": "0.1.0",
+  "description": "Look outward from the Emerging-Patterns Bend packages: find who on GitHub depends on bolt, ez and the ez libraries, and tell real dependents from mentions and listings.",
+  "author": { "name": "Emerging Patterns" }
+}
