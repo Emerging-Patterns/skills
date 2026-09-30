@@ -217,9 +217,27 @@ For each package in order:
    **`manifest` is reserved at a package's root.** The hub serves each
    package's own manifest at `<hash>/manifest`, and it refuses a package
    with a top-level `manifest/` directory. Rename the directory.
-   Reproduce hub questions with the real package, or with a refused upload.
-   Each successful test upload is permanent and public, and a test suite that
-   publishes leaves orphans on the hub.
+   **Only a real release goes to the real hub.** Every other `--publish`
+   (a repro, an experiment, a script under test) runs with `BEND_HUB` set to
+   a local stand-in, and you check it is set before running it: bend uploads
+   to `https://hub.bend-lang.com` whenever `BEND_HUB` is unset, and a test
+   upload there is public and permanent (an agent's 2026-09-25 `manifest/`
+   repro is still on the hub as `0xb3a098ff…`). The stand-in is ez's
+   `src/check/oracle.bend`, which accepts an upload, computes the package
+   hash the way bend does, and serves the files back:
+
+   ```bash
+   mkdir -p "$TMP/hub"
+   bend <ez>/src/check/oracle.bend "$TMP/hub" 8765 &   # GET / answers ok once it is up
+   until curl -fs http://127.0.0.1:8765/ >/dev/null; do sleep 1; done
+   BEND_HUB=http://127.0.0.1:8765 bend main.bend --publish
+   ```
+
+   It takes uploads by hash only. For name questions use the real hub's
+   read-only `GET /publish-check` (step 0), never a trial named publish.
+   ez's own tests already run this way (`tests/publish.bend`,
+   `tests/publishing.bend`). A refused upload (a check that fails before any
+   bytes are sent) is also safe to reproduce against the real hub.
 7. A hash that did not change is fine when the entry's walk didn't change,
    e.g. ezhttp's `json.bend` is only reached from LAWS, so bumping ezjson left
    ezhttp's hub package identical. Say so rather than assume a mistake.
