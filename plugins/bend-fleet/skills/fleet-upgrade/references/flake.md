@@ -48,7 +48,7 @@ and in `ez.toml`:
 ```toml
 [tools.bolt]
 git = "https://github.com/Emerging-Patterns/bolt"
-tag = "v1.8.0"
+tag = "v1.11.0"
 root = "."
 entry = "main.bend"
 ```
@@ -62,3 +62,42 @@ bendLib? }`, `mkLint { src, bolt?, bend?, name?, lock?, bendLib? }`,
 `toolPackage { name, src, bend?, lock?, wrapFlags?, … }`, `devPackages src`,
 `mkShell { packages, extraHook?, src? }`, `mkFresh` (ez's own fresh-clone
 check).
+
+## The interim flake, while ez can't gate the new bend
+
+When a new bend changes what the proof gate reads (2.0.32's `ALL PROOFS
+CHECK`) or what ez itself builds on, a package can't wait for ez. Its flake
+builds and proves on the new bend and keeps ez and bolt on ez's own bend:
+
+```nix
+  # the commit of bendlang/bend whose flake packages the target release
+  # (a vX.Y.Z tag can still package the release before it)
+  inputs.bend = {
+    url = "github:bendlang/bend/<rev>";
+    inputs.nixpkgs.follows = "nixpkgs";
+  };
+  # ez stays on the bend its own flake.lock records until it releases on
+  # the new one
+  inputs.ez = {
+    url = "github:Emerging-Patterns/ez";
+    inputs.nixpkgs.follows = "nixpkgs";
+    inputs.bend.url = "github:bendlang/bend/<ez's bend rev>";
+  };
+  # ...
+        proofs = pkgs.runCommand "<pkg>-proofs" {
+          nativeBuildInputs = [ bend ];
+          BEND_LIB = ez.bendLib ./ez.lock.toml;
+        } ''
+          export HOME=$TMPDIR
+          cp -r ${self} src && chmod -R u+w src && cd src
+          for p in $(find . -name PROOF.bend -not -path './.ez/*' | sort); do
+            first=$(cd "$(dirname "$p")" && bend "$(basename "$p")" | head -n 1)
+            echo "$p: $first"
+            [ "$first" = "ALL PROOFS CHECK" ] || exit 1
+          done
+          touch $out
+        '';
+```
+
+The tooling pass (SKILL.md §4) puts `inputs.ez.inputs.bend.follows = "bend"`
+and `ez.mkProofs` back once ez releases on the new bend.

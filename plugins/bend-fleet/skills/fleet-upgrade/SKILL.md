@@ -1,6 +1,6 @@
 ---
 name: fleet-upgrade
-description: Upgrade Bend packages that depend on each other through ez (ez, bolt, shake, snap, ezjson, eztoml, ezhttp, ezimg, ezaudio, or any ez-managed Bend repos) to their latest releases, and publish them to the Bend hub by hash. Two modes, one package (bump its deps, release it, publish it, fix its README, tell its dependents) or the whole fleet (every repo, leaves first, then flake ez pins and [tools.bolt] everywhere, READMEs verified as a plain Bend user). Use it whenever someone asks to bump, upgrade, re-pin, release, or publish Bend packages, update ez pins or flake inputs across repos, get "latest versions of everything", fix README hashes or hub imports, or asks why a hub import 404s or `ez publish` says the package walks drifted, even if they never say "fleet".
+description: Upgrade Bend packages that depend on each other through ez (ez, bolt, shake, snap, ezjson, eztoml, ezhttp, ezimg, ezaudio, or any ez-managed Bend repos) to their latest releases, and publish them to the Bend hub, by hash and under their hub names. Two modes, one package (bump its deps, release it, publish it, fix its README, tell its dependents) or the whole fleet (every repo, leaves first, then flake ez pins and [tools.bolt] everywhere, READMEs verified as a plain Bend user). Use it whenever someone asks to bump, upgrade, re-pin, release, or publish Bend packages, update ez pins or flake inputs across repos, get "latest versions of everything", fix README hashes or hub imports, publish under a hub name (name@version), move the fleet to a new bend release, or asks why a hub import 404s or `ez publish` says the package walks drifted, even if they never say "fleet".
 ---
 
 # Fleet upgrade
@@ -9,15 +9,18 @@ A fleet is a set of Bend repos that pin each other. The goal of a run:
 
 1. every package imports the **latest release** of each dependency, by the
    hash that release has on the hub;
-2. every release is **published to the hub by hash** (no named publishing);
-3. every README's `import 0x…` lines name hashes the hub serves, and every
-   snippet checks for a **plain Bend user** (only `bend`, no ez);
-4. dev tooling (flake `ez` input, `[tools.bolt]`) points at the latest ez and
+2. every release is **published to the hub**, by hash, and under its hub
+   name as `<name>@X.Y.Z.0` where the project has one (step 3.6);
+3. every hub package carries its **LICENSE** and a **one-line description**;
+4. every README leads with the named import (`import <name>@<ver>/main.bend`)
+   the hub serves, and every snippet checks for a **plain Bend user** (only
+   `bend`, no ez);
+5. dev tooling (flake `ez` input, `[tools.bolt]`) points at the latest ez and
    bolt.
 
 Content and tooling are separate on purpose. A package's hub hash is the
-walk from its entry (the imported `.bend` files, plus LICENSE under Bend
-2.0.27). `flake.lock`, `ez.toml` tools, READMEs, and files the entry doesn't
+walk from its entry: the imported `.bend` and effect files, plus a LICENSE
+from each directory that holds a walked file. `flake.lock`, `ez.toml` tools, READMEs, and files the entry doesn't
 reach are not part of it. So "latest" is judged by content: a leaf whose
 default branch only moved its `flake.lock` is still at its latest release.
 This also breaks the cycle you'd otherwise hit, where ez pins shake by rev
@@ -31,13 +34,20 @@ updated in one final pass.
   against the latest release, tools and flake pins, unreleased commits, any
   `publish-as` set, and the **release order**. Run it first and again at the
   end.
-- `scripts/publish_hash.sh REPO [TAG]` shallow-clones the tag and refuses if
-  `[package]` sets `publish-as` or `version`. Otherwise it runs `ez publish`
-  (hash only) and prints `repo tag 0x… hub=200`. Set `EZ=` to a current ez
-  binary.
+- `scripts/publish_hash.sh REPO [TAG] [NAME]` shallow-clones the tag and
+  publishes it with `$BEND` (the bend the fleet targets), as `NAME@X.Y.Z.0`
+  when a hub name is given. It refuses, before any upload, a `[package]` that
+  sets `publish-as`/`version`, an entry under `manifest/`, and an entry with
+  no LICENSE beside it. It prints the entry's first line (the description)
+  and `repo tag 0x… hub=200 named=…`. `EZ=` is only used to fetch locked deps.
 - `scripts/readme_hub_check.sh README.md [HASH]` checks each `import 0x…`
   against the hub, then runs every snippet that imports one with
   `bend --check-only`, in an empty HOME with only `bend` on PATH.
+  Imports may be by hash or by `<name>@<ver>` (resolved at the hub's
+  `/name/<name>@<ver>`). A snippet passes on `ALL PROOFS CHECK`, or on a
+  `SOME PROOFS FAIL` whose only error is that defs rely on unsafe or foreign
+  code, which since bend 2.0.32 is the verdict on any program that reaches
+  an effect.
 
 ## 0. Prepare
 
@@ -70,19 +80,54 @@ updated in one final pass.
   proofs were also run on the new bend by hand, since CI no longer does it.
   The CI then goes green without admin merges, and the tools move to the new
   bend when their own releases do.
+- **Read every release note between the fleet's bend and the target**, and
+  expect breaks the notes don't call breaking. From 2.0.28 to 2.0.34:
+  `IO.args()` starts with the program name (arguments at index 1) and a
+  compiled binary passes `--help` through; `TCP.listen`/`UDP.bind` take a
+  host; `bend` prints `ALL PROOFS CHECK` / `SOME PROOFS FAIL` (exit 1) and a
+  proof whose imports reach `@unsafe` **or user foreign code** (C/JS
+  effects, hub imports included) fails; Base lost helpers such as
+  `String.eq.fin` and `Nat.mod.fin`, and some Array/U32 helpers changed
+  shape. Survey first: fetch each repo's deps and run its entry and every
+  PROOF.bend on the new bend (`references/porting.md`). A proof that fails
+  only because it imports an effect is fixed by moving the effect into a
+  sibling module no law file imports, not by exempting it.
+- **When ez's own gate can't read the new bend**, the interim package flake
+  runs the proofs itself: bend at the new rev, the `ez` input pinned to ez's
+  own bend rev instead of following, and `checks.proofs` a `runCommand`
+  that runs bend on every PROOF.bend with
+  `BEND_LIB = ez.bendLib ./ez.lock.toml` and requires the first line
+  `ALL PROOFS CHECK` (`references/flake.md`). ez.mkProofs comes back in the
+  tooling pass, once ez releases on the new bend.
 - Check branch protection is uniform. Each package repo should carry the same
   ruleset: PR required, `check / check` required, no force-push or deletion,
   squash only, auto-merge on, delete branch on merge. Fix drift with
   `gh api repos/<org>/<repo>/rulesets`. See `references/github.md`.
-- Confirm no `ez.toml` sets `publish-as` or `version` under `[package]`. Those
-  two fields switch `ez publish` to named publishing (`bend … --publish
-  name@version`), which the hub gates. Without them ez runs a bare
-  `bend <entry> --publish`, which is hash only.
-  Names are still gated after bend 2.0.28: the hub registers 12 to 64
-  characters, auctions 3 to 11 (Bender credits), and refuses shorter ones.
-  Every fleet name is short, and `ez` can never be one. Ask the hub before
-  planning a named publish: `GET $BEND_HUB/publish-check?name=N&version=V`
-  with the `bend login` key as a bearer token is read-only.
+- **Hub names.** Keep `publish-as`/`version` out of `ez.toml`: release-please
+  would have to bump `version`, and the name is a publishing decision, not
+  package content. Name each release when publishing instead (step 3.6).
+  bend accepts any `[a-z][a-z0-9-]{0,63}`, and the hub decides: 12 to 64
+  characters register free on first publish, 3 to 11 are auctioned (Bender
+  credits, bid at `hub.bend-lang.com/n/<name>`), shorter ones are refused.
+  The Emerging-Patterns fleet owns `bolt`, `snap`, `shake` and `ezx` (ez's
+  library; `ez` is too short); the rest publish as `emerging-<repo>`.
+  Before publishing, ask the hub, read-only, with the `bend login` key
+  (`~/.bend/bender.json`) as a bearer token:
+  `GET https://hub.bend-lang.com/publish-check?name=N&version=X.Y.Z.0` must
+  answer `"name":"yours"` or `"free"` and `"version_ok":true`. A version only
+  goes up, so name the newest release, not old ones after it.
+- **Layout, LICENSE and description** (checked before any publish, which is
+  permanent). The hub shows the first line of the first walked file by path
+  (LICENSE aside) as the description, and bend adds a LICENSE only from a
+  directory that holds a walked file. ez init's layout gets both right:
+  `main.bend` at the package root, opening with `# <name>: <one sentence>`,
+  the LICENSE beside it, and every other module under `src/` (so nothing but
+  LICENSE sorts before `main.bend`). A flat layout (`b64.bend` before
+  `main.bend`) shows the wrong module's header; an entry in a subdirectory
+  (`ezaudio/main.bend`, `ledger/manifest.bend`) walks no LICENSE and is
+  published as MIT-0, the hub terms' default, for good. Move such a package
+  to ez init's layout (`feat!`: module paths change) before its next publish.
+  The hub's `GET /packages.json` lists `desc` and `license.id` per package.
 
 ## 1. What "latest" means
 
@@ -131,7 +176,7 @@ For each package in order:
    That's the maintainer's call. Record the row as trusted-but-pending in the
    trust section, so the weakness stays visible.
 3. **Gate** with the current ez and bend: `bend <entry> --check-only`, every
-   `PROOF.bend` says `All terms check`, `$EZ test`, and `nix flake check` if
+   `PROOF.bend` prints `ALL PROOFS CHECK` (`$EZ prove`), `$EZ test`, and `nix flake check` if
    you can. LAWS files listing TODOs are normal (the proof discharges them).
 4. **Commit** with a conventional type release-please will release: `fix(deps):`
    or `feat(deps):`, or `!` for a breaking change. Repos here use
@@ -149,24 +194,32 @@ For each package in order:
    A body line such as `io_eff(CID(Name), run, need)` reads as a footer. Add
    `BEGIN_COMMIT_OVERRIDE` / `fix: …` / `END_COMMIT_OVERRIDE` to the merged
    PR's body and re-run the release-please workflow run.
-6. **Publish** the tag: `EZ=<current ez> scripts/publish_hash.sh <repo> <tag>`.
-   Record `repo tag hash`. ez's nix package wraps `ez` with the bend it was
-   built with first on PATH, so `ez publish` runs that bend, not yours. The
-   walk and the hash are the same, and ez refuses a disagreement, but check
-   the published package with the new bend afterwards (step 5).
-   Publishing is public and permanent, but
-   content-addressed, so re-publishing the same tag is harmless and returns the
-   same hash. The repos' own `publish` workflow (`workflow_dispatch`, input
-   `tag`) is fine **only once that repo's flake pins a current ez and bend**.
-   Until then it builds with the stale pins and fails with
-   `ez computed 0x… and bend published 0x…`, and bend has already uploaded an
-   orphan under the old walk.
+6. **Publish** the tag. Normally nothing to do: each repo's
+   `release-please.yml` has a `publish` job (shared `publish.yml`) that runs
+   when release-please cuts a release and publishes the tag as
+   `<hub-name>@X.Y.Z.0` with the `BEND_HUB_KEY` repo secret. It builds ez from
+   the repo's flake, runs `ez prove`, refuses a missing LICENSE, a
+   `manifest/` entry or a name the hub won't take, then uploads and checks the
+   name resolves. Check the run; if it failed, fix the cause and retry with the
+   repo's `publish.yml` (workflow_dispatch: `tag`, `dry-run`). Run it with
+   `dry-run` first when anything about the flow changed. See
+   `references/github.md`.
+   The job reads the workflow at the release commit: a pin or caller fix must
+   land **before** the release PR merges, or that release publishes with the
+   old one (ez 1.4.0 did; its retry went through `publish.yml`).
+   A tag cut before the repo's tooling moved to the target bend can't be
+   published by CI (its flake builds the old ez); publish such a tag locally
+   with `BEND=<bend> scripts/publish_hash.sh <repo> <tag> <hub-name>`.
+   Publishing is public and permanent, but content-addressed, so re-publishing
+   the same tag returns the same hash. A hub name's version only goes up, so
+   when a tag has a defect (old description, missing LICENSE) skip it and
+   publish the next release rather than naming a bad one.
    **`manifest` is reserved at a package's root.** The hub serves each
    package's own manifest at `<hash>/manifest`, and it refuses a package
-   with a top-level `manifest/` directory (`EISDIR … /srv/hub/stage/…/manifest`).
-   Rename the directory; ez's `manifest/` became `ledger/` in 1.2.0.
+   with a top-level `manifest/` directory. Rename the directory.
    Reproduce hub questions with the real package, or with a refused upload.
-   Each successful test upload is permanent and public.
+   Each successful test upload is permanent and public, and a test suite that
+   publishes leaves orphans on the hub.
 7. A hash that did not change is fine when the entry's walk didn't change,
    e.g. ezhttp's `json.bend` is only reached from LAWS, so bumping ezjson left
    ezhttp's hub package identical. Say so rather than assume a mistake.
@@ -174,7 +227,11 @@ For each package in order:
 A third-party dependency (e.g. Giulio2002/bend-sha256) is not yours to
 publish. Pin the entry whose walk its author published, so the hash matches
 the one in their README (`package.bend` → `0xda83…`), rather than a smaller
-walk nobody put on the hub.
+walk nobody put on the hub. When upstream lags a bend release, fork it, open
+the fix upstream, pin the fork's rev, and publish the fork by hash only with
+the maintainer's (your user's) say-so: a package whose walk reaches it
+cannot be fetched by a plain bend user until it is on the hub. With no
+LICENSE it goes up as MIT-0.
 
 ## 4. Tooling pass (after ez and bolt are released)
 
@@ -206,27 +263,24 @@ In every repo, one PR:
 
 ## 5. READMEs (a plain Bend user)
 
-For each package, on a `docs:` PR (docs don't release, and README isn't part
-of the hash):
+For each package, in the tooling PR or a `docs:` PR (docs don't release, and
+README isn't part of the hash):
 
-- **Install** leads with plain Bend: no install step, just
-  `import 0x<hash>/main.bend as X`, which bend fetches from the hub on first
-  run. Name the version the hash is. ez (`ez add <org>/<repo>`) comes second.
-- The hub package is the walk from `[package] entry`. For ez that is the
-  ledger library, not the `ez` binary, so ez's README shows importing the
-  library, and the tool is still built from a clone. bolt's entry is its
-  program, so bolt can be built from the hub:
-- A **tool** whose entry is its program can be built from the hub with nothing but bend: a
-  file holding `import 0x<hash>/main.bend as T` and `def main() -> IO(Unit):
-  T.main()`, then `bend t.bend -o t.bin`. Lead with that, then the clone
-  build.
-- Every `import 0x…` is the current release's hash with paths valid at that tag.
-  A snippet that names a type imports the module that defines it
-  (`0x…/src/value.bend` for ezjson's `Json`).
-- Run `scripts/readme_hub_check.sh README.md <hash>` until it exits 0. Bend
-  2.0.27 gotchas that break snippets: `match` can't scrutinize a computed
-  value (give it its own def), and a type must be named through its defining
-  module.
+- **Install** leads with plain Bend and the hub name:
+  `import <name>@X.Y.Z.0/main.bend as X`, which bend resolves at the hub and
+  fetches on first run. Name the version, and give the hash it resolves to
+  once, for pinning by content. ez (`ez add <org>/<repo>`) comes second.
+- State the bend the package needs (2.0.32+ for anything reading argv or
+  the new verdict) and the one it is built and checked on.
+- A **tool** whose entry is its program (bolt; ez as `ezx` since 1.4.0) is
+  built from the hub with nothing but bend: a file holding
+  `import <name>@<ver>/main.bend as T` and `def main() -> IO(Unit): T.main()`,
+  then `bend t.bend -o <tool>`. Lead with that, then the clone/nix build.
+- Every import names the current release with paths valid at that tag. A
+  snippet that names a type imports the module that defines it
+  (`…/src/value.bend` for ezjson's `Json`).
+- Run `scripts/readme_hub_check.sh README.md <hash>` until it exits 0. Note
+  a fetch from the hub can time out: retry before debugging.
 
 ## 6. Finish
 

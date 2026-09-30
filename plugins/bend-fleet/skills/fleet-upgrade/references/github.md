@@ -40,12 +40,30 @@ gh pr merge N -R org/repo --squash --auto
 
 The merge creates the tag and GitHub release a few seconds later.
 
-## Publish workflow
+## Publishing: release, then publish
 
-Each repo's `publish.yml` is `workflow_dispatch` with input `tag`. It calls the
-shared workflow, which checks out `refs/tags/<tag>` and runs
-`nix develop -c ez publish`, so it uses the **repo's flake-pinned** ez and bend.
-Trust it only after the tooling pass. Before that, publish locally with
-`scripts/publish_hash.sh`. `ez publish` prints the hash on a line of its own,
-then the import line. The workflow's log has them after the `hub description:`
-line.
+Each repo's `release-please.yml` calls the shared release-please workflow,
+then a `publish` job (`needs: release-please`,
+`if: needs.release-please.outputs.release_created == 'true'`) calling the
+shared `publish.yml` with `tag: needs.release-please.outputs.tag_name`,
+`hub-name: <name>` and `secrets: bend-key: ${{ secrets.BEND_HUB_KEY }}`.
+`publish.yml` in the repo is the manual retry (`workflow_dispatch`: `tag`,
+`dry-run`) calling the same shared workflow. Both pin
+Emerging-Patterns/actions by commit SHA; bump every caller when the shared
+workflow changes.
+
+The shared publish job: checks out `refs/tags/<tag>`; refuses `publish-as`/
+`version`, a `manifest/` entry, a missing LICENSE beside the entry, a bad
+name or a missing key; builds ez from the repo's flake (`.#ez`, else
+`.#default` in ez itself, whose dev shell has no ez); `ez fetch` + `ez prove`;
+writes the key to `~/.bend/bender.json`; asks the hub's `publish-check`;
+publishes with `bend <entry> --publish <name>@X.Y.Z.0` from the entry's
+directory (by hash with `ez publish` when no name); checks `<hash>/manifest`
+and `/name/<name>@X.Y.Z.0`. `dry-run` stops before the upload. A dry-run of
+a version already on the hub stops at the name check (versions only go up).
+
+`BEND_HUB_KEY` is the `key` of `~/.bend/bender.json` for the account that
+owns the names, set as a repo secret on each package repo (`gh secret set
+BEND_HUB_KEY --repo <org>/<repo>`; an org secret needs the `admin:org`
+scope). Private repos not being published don't get it.
+

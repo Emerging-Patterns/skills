@@ -38,7 +38,7 @@ refactors its internals.
 
 One subagent per dependent repo, each with: the repo path and branch, the
 new dependency tag and hash, the latest ez binary path, the trust rule above,
-the gate (every PROOF.bend `All terms check`, `ez test`, `nix flake check`),
+the gate (every PROOF.bend prints `ALL PROOFS CHECK`, `ez test`, `nix flake check`),
 and "open a PR, don't merge". Keep publishing and merging in the parent, so
 every hub upload and release goes through one place in dependency order.
 Forward new tags and hashes to a waiting subagent as they are published.
