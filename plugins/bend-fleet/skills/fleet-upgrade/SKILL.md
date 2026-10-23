@@ -32,8 +32,11 @@ updated in one final pass.
 - `scripts/fleet_graph.py DIR` maps every clone in DIR. It shows each dep's
   tag and hash, whether the hub serves that hash, which deps are stale
   against the latest release, tools and flake pins, unreleased commits, any
-  `publish-as` set, and the **release order**. Run it first and again at the
-  end.
+  `publish-as` set, and the **release order**. Two lines catch what a run
+  otherwise misses: `SHIPPED SINCE vX, NOT RELEASED: <files>` (files the
+  entry walks that changed after the latest tag) and `hub <name>@X.Y.Z.0=
+  MISSING` (a release that never reached the hub under its name). Run it
+  first, before each wave of work, and again at the end.
 - `scripts/publish_hash.sh REPO [TAG] [NAME]` shallow-clones the tag and
   publishes it with `$BEND` (the bend the fleet targets), as `NAME@X.Y.Z.0`
   when a hub name is given. It refuses, before any upload, a `[package]` that
@@ -56,9 +59,9 @@ updated in one final pass.
   `reset --hard` even on a clean clone). Old local branches and stray
   files are not the state you are upgrading. Ask before discarding someone's
   uncommitted work; move stray files aside rather than deleting them.
-- **Check for shipped content nobody released.** For each repo,
-  `git diff --stat <last tag> HEAD -- main.bend src/ LICENSE` (the files the
-  entry walks). A `build:` or `chore:` commit that touched one of them
+- **Check for shipped content nobody released.** `fleet_graph.py` prints a
+  `SHIPPED SINCE` line for each repo where a file the entry walks changed
+  after the last tag. A `build:`, `chore:` or `refactor:` commit that touched one of them
   changed the package without a release: the 2.0.35/2.0.36 pin PRs moved
   snap's `io_eff` calls, shake's `cli.bend` and eztoml's `main.bend` that
   way, so the hub's latest snap no longer built on the bend its own main
@@ -110,7 +113,9 @@ updated in one final pass.
   and a plain `--` reach `IO.args` and `--RTS` ends option reading;
   `TCP.send`'s unsent residue is a `List<&2, U32>`; `F32.round` rounds once
   (0.49999997 now rounds to 0, which changed ezaudio's MP3 bytes on that
-  edge); a Nat crosses to JS as a number, not a BigInt; `--publish` mines a
+  edge, and every check still passed: a Base change that alters what a
+  package outputs is the maintainer's call, so stop and ask, even when the
+  new behaviour looks more correct); a Nat crosses to JS as a number, not a BigInt; `--publish` mines a
   proof of work (below). Survey first: fetch each repo's deps and run its
   entry and every PROOF.bend on the new bend (`references/porting.md`).
   bend stops at the first error in a file, so a survey line is a lower
@@ -212,6 +217,15 @@ For each package in order:
    or `feat(deps):`, or `!` for a breaking change. Repos here use
    `versioning: always-bump-minor`, so breaking changes bump the minor, never
    the major. Push, open a PR, and `gh pr merge --squash --auto`.
+   When the commit carries a `BREAKING CHANGE:` footer, merge with the
+   commit's own message (`gh pr merge N --squash --subject "<subject> (#N)"
+   --body "<the commit body>"`): a squash otherwise takes the PR body, and
+   release-please only sees the footer if it survives the squash.
+   **Merging under auto mode.** The classifier blocks merging a PR you
+   opened yourself without review, and merging one with no checks (the
+   actions and skills repos have no CI). Before a long run, ask the user
+   for a standing "merge when green" and say which PRs it covers; workflow
+   PRs may still need their explicit OK.
 5. **Release**: release-please opens `chore(<branch>): release X.Y.Z` as
    `github-actions`. CI does **not** run on PRs a bot token opens, so the
    required check never reports. Close and reopen the PR as yourself
