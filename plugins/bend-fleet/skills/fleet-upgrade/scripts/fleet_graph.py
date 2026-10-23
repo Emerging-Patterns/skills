@@ -6,7 +6,7 @@ and the order to upgrade them in.
     fleet_graph.py [DIR] --json     # the same, as JSON
 
 Reads each clone's default branch as checked out (refresh first: git fetch,
-checkout the default branch, reset to origin). For every repo it reports:
+checkout the default branch, merge --ff-only). For every repo it reports:
 
   deps   - [deps.*] in ez.toml: key, git url, tag, hash, and whether that hash
            is on the hub (GET <hub>/<hash>/manifest == 200)
@@ -14,6 +14,15 @@ checkout the default branch, reset to origin). For every repo it reports:
   flake  - flake.lock inputs that point at other fleet repos, with their rev
   latest - the repo's newest GitHub release tag (gh), and how many commits
            the default branch is ahead of it
+  shipped - files the entry walks (its local imports, the quoted C/JS
+           effect files they name, and a LICENSE beside any of them) that
+           changed since the latest tag: content no release carries yet.
+           A `build:` commit that touched one of these shipped code nobody
+           can fetch from the hub. Hub imports (0x…, name@…) are not walked.
+  hub    - whether the latest tag is on the hub under the repo's hub name
+           (--names repo=name,…; default ezx for ez, the repo name for
+           bolt/shake/snap, emerging-<repo> otherwise), from
+           GET <hub>/name/<name>@X.Y.Z.0
 
 Then it prints a topological order over [deps] edges (package content), which
 is the order releases must go in. [tools] and flake inputs are dev tooling:
@@ -71,6 +80,60 @@ def on_hub(h):
         return False
 
 
+LOCAL = re.compile(r'^\s*import\s+(?:"(\.\.?/[^"]+)"|(\.\.?/\S+\.bend))')
+OWN_NAMES = {"ez": "ezx", "bolt": "bolt", "shake": "shake", "snap": "snap"}
+
+
+def read_at(path, rev, rel):
+    """A tracked file's text at rev, or None when it does not exist there."""
+    r = subprocess.run(["git", "show", f"{rev}:{rel}"], cwd=path, capture_output=True, text=True)
+    return r.stdout if r.returncode == 0 else None
+
+
+def walk(path, rev, entry):
+    """The repo-relative files the entry reaches at rev: .bend files through
+    local imports, the C/JS files a quoted import names, and a LICENSE from
+    each directory holding one of them, as bend's publish walk does."""
+    seen, todo = set(), [os.path.normpath(entry)]
+    while todo:
+        rel = todo.pop()
+        if rel in seen or rel.startswith(".."):
+            continue
+        text = read_at(path, rev, rel)
+        if text is None:
+            continue
+        seen.add(rel)
+        if not rel.endswith(".bend"):
+            continue
+        for line in text.splitlines():
+            m = LOCAL.match(line)
+            if m:
+                todo.append(os.path.normpath(os.path.join(os.path.dirname(rel), m.group(1) or m.group(2))))
+    for d in {os.path.dirname(f) for f in seen}:
+        lic = os.path.join(d, "LICENSE")
+        if read_at(path, rev, lic) is not None:
+            seen.add(lic)
+    return seen
+
+
+def shipped_since(path, tag, entry):
+    """Walked files (at the tag or at HEAD) whose content differs between them."""
+    if not tag:
+        return []
+    files = walk(path, tag, entry) | walk(path, "HEAD", entry)
+    return sorted(f for f in files if read_at(path, tag, f) != read_at(path, "HEAD", f))
+
+
+def named_on_hub(name, tag):
+    if not name or not tag or not re.fullmatch(r"v\d+\.\d+\.\d+", tag):
+        return None
+    try:
+        with urllib.request.urlopen(f"{HUB}/name/{name}@{tag[1:]}.0", timeout=20) as r:
+            return r.status == 200
+    except Exception:
+        return False
+
+
 def slug(url):
     m = re.search(r"github\.com[/:]([^/]+/[^/.]+)", url or "")
     return m.group(1) if m else None
@@ -90,6 +153,7 @@ def repo_info(path):
         for k, t in (doc.get("tools") or {}).items():
             info["tools"].append({"key": k, "slug": slug(t.get("git")), "tag": t.get("tag"), "rev": t.get("rev")})
         info["publish_as"] = (doc.get("package") or {}).get("publish-as")
+        info["entry"] = (doc.get("package") or {}).get("entry") or "main.bend"
     lock = os.path.join(path, "flake.lock")
     if os.path.exists(lock):
         nodes = json.load(open(lock))["nodes"]
@@ -103,6 +167,9 @@ def repo_info(path):
         branch = sh("gh", "api", f"repos/{info['slug']}", "--jq", ".default_branch")
         if tag and branch:
             info["ahead"] = sh("gh", "api", f"repos/{info['slug']}/compare/{tag}...{branch}", "--jq", ".ahead_by")
+        if tag and "entry" in info:
+            sh("git", "fetch", "-q", "--tags", "origin", cwd=path)
+            info["shipped"] = shipped_since(path, tag, info["entry"])
     return info
 
 
@@ -129,13 +196,21 @@ def topo(repos):
 
 
 def main():
-    args = [a for a in sys.argv[1:] if not a.startswith("--")]
+    argv = sys.argv[1:]
+    names = dict(OWN_NAMES)
+    if "--names" in argv:
+        i = argv.index("--names")
+        names.update(kv.split("=", 1) for kv in argv[i + 1].split(",") if "=" in kv)
+        del argv[i:i + 2]
+    args = [a for a in argv if not a.startswith("--")]
     root = args[0] if args else "."
     repos = [repo_info(os.path.join(root, d)) for d in sorted(os.listdir(root))
              if os.path.isdir(os.path.join(root, d, ".git")) and
              (os.path.exists(os.path.join(root, d, "ez.toml")) or os.path.exists(os.path.join(root, d, "flake.nix")))]
     by_slug = {r["slug"]: r for r in repos}
     for r in repos:
+        r["hub_name"] = names.get(r["name"], f"emerging-{r['name']}")
+        r["named"] = named_on_hub(r["hub_name"], r.get("latest"))
         for d in r["deps"]:
             d["on_hub"] = on_hub(d["hash"])
             up = by_slug.get(d["slug"])
@@ -146,7 +221,11 @@ def main():
         return
     for r in repos:
         flag = "  PUBLISH-AS SET" if r.get("publish_as") else ""
-        print(f"== {r['name']}  latest={r.get('latest') or '-'}  unreleased={r.get('ahead') or '?'}{flag}")
+        hub = {True: "ok", False: "MISSING", None: "-"}[r.get("named")]
+        print(f"== {r['name']}  latest={r.get('latest') or '-'}  unreleased={r.get('ahead') or '?'}"
+              f"  hub {r['hub_name']}@{(r.get('latest') or 'v-')[1:]}.0={hub}{flag}")
+        if r.get("shipped"):
+            print(f"   SHIPPED SINCE {r['latest']}, NOT RELEASED: {', '.join(r['shipped'])}")
         for d in r["deps"]:
             stale = "" if not d["latest"] or d["tag"] == d["latest"] else f"  -> {d['latest']}"
             print(f"   dep  {d['key']:<10} {d['tag'] or d['rev'][:10] if d['rev'] else d['hub']:<10} {d['hash']}  hub={'ok' if d['on_hub'] else 'MISSING'}{stale}")

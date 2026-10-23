@@ -42,3 +42,25 @@ the gate (every PROOF.bend prints `ALL PROOFS CHECK`, `ez test`, `nix flake chec
 and "open a PR, don't merge". Keep publishing and merging in the parent, so
 every hub upload and release goes through one place in dependency order.
 Forward new tags and hashes to a waiting subagent as they are published.
+
+Write what every subagent shares into one brief file in the scratchpad and
+give each one only its repo and what is particular to it ("read and follow
+<brief>; your repo: …; known breaks: …; commit type: …"). The brief holds:
+
+- the tool paths (target bend, an ez built on the target, the skill);
+- the target pin (bend commit and its linux-x64 archive sha256) and what
+  to mirror (the previous pin commit, found with `git log --grep`);
+- the current release table: tag, hub name and hash for every package.
+  Rebuild it before each wave from `fleet_graph.py` and the hub's
+  `/name/<name>@X.Y.Z.0`; other sessions release while you run, and a
+  stale table sends agents to old versions;
+- the breaks to expect, from the release notes and the survey;
+- the rules: honest proofs, trust a dependency's rows, the commit type
+  decides the release, refresh with `merge --ff-only`, which token pushes
+  workflow files, don't merge or publish, wait for green CI, and what the
+  report must say.
+
+Agents report in their own words; check each claim that matters (a PR's
+checks, a hash on the hub, a README snippet) before acting on it. An agent
+stopped by auto mode partway through a decision the parent made for the
+user stays stopped: take the decision to the user, not around the block.
