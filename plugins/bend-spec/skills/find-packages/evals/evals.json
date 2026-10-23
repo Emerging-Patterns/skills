@@ -1,0 +1,23 @@
+{
+  "skill_name": "find-packages",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "I need to base64-encode a WAV's bytes in a Bend MCP tool result. Should we add a base64 encoder to ezsys? Check first and answer in answer.md in your outputs dir; read-only.",
+      "expected_output": "Runs find_packages.py with several terms (base64, b64, RFC 4648, encode) including --content; finds bend-encoding (base64.bend, Base64.encode over Bytes, found by file name since it has no description), gralha-bytes (base64 among other codecs), and ezhttp's internal unexported src/b64.bend; checks each one's input type (String vs List<U32> vs packed Bytes), laws, foreign code and offline buildability; recommends use/wrap/build with reasons instead of defaulting to adding it to ezsys; states the terms and passes run.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "Before I approve a new ezmcp library, is there already an MCP or JSON-RPC package for Bend? Read-only; answer in answer.md in your outputs dir.",
+      "expected_output": "Searches mcp, model context protocol, json-rpc, jsonrpc, tools/call with --content; reports that nothing on the hub names, describes, ships a file for or defines MCP/JSON-RPC, naming the terms and passes so the negative result is credible; notes adjacent packages that a library would build on (HTTP servers like bend-kit-http, JSON like bend-kit-json or ezjson) rather than calling the hub empty.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "Porting a scraper to Bend; it needs regular expressions with capture groups. What should it use?",
+      "expected_output": "Finds bend-kit-regex (RE2 syntax, Pike VM, capture groups) by name, description and content, reads its exported defs (compile, exec, find, is_match) and checks types, laws, version and dependents; recommends using it over hand-written matcher steps unless a concrete gap (e.g. byte-vs-String input) rules it out.",
+      "files": []
+    }
+  ]
+}

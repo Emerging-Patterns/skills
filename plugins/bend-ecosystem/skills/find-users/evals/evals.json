@@ -1,0 +1,17 @@
+{
+  "skill_name": "find-users",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Search GitHub for anyone using bolt or ez outside Emerging-Patterns. So far we know aivv73/bend-voxel and chhoumann/zed-bend. Write the findings to users.md in your outputs dir. Read-only: don't open issues or PRs.",
+      "expected_output": "Runs code search for Emerging-Patterns/<pkg> and hub hashes while respecting the 10/min code-search limit, and also sweeps Bend repos found by seed searches, scanning trees for ez.toml/bolt.bend and reading READMEs. Classifies zed-bend as a real dependent (bolt lsp), bend-voxel as a mention (research doc, bolt 0.7.0), awesome-bend/bend-packages as listings, and bend-sha256 as upstream. States what was searched and the limits (private repos, editor-only use, index gaps), and flags stale hashes in awesome-bend.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "We're about to make a breaking change to ezjson's Json type. Who outside the org would that break? Answer in answer.md in your outputs dir; read-only.",
+      "expected_output": "Narrows the search to ezjson (--packages ezjson plus its current and old hub hashes), separates real importers from listings, notes that in-org dependents (bolt, ez) are covered by the fleet-upgrade work rather than this search, and reports honestly if no outside importer is found, with the limits of the search.",
+      "files": []
+    }
+  ]
+}
