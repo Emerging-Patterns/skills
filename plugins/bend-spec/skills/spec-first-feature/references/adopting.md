@@ -24,8 +24,14 @@ the feature, not mixed into one.
 5. **Layout and pins.** Current ez expects `main.bend` at the root as the
    whole interface and every other file under `src/`: consumers import only
    `main.bend`, and everything under `src/` may change in any release
-   (shake and ezjson are laid out this way). Mark each IO def
-   `# noqa: L001 IO` so `coverage` does not ask for a law no one can state.
+   (shake and ezjson are laid out this way). Mark each undotted IO def or
+   re-export in `main.bend` `# noqa: L001 <reason>` (e.g. `IO wrapper,
+   trusted (HTTP-TRUST-5)` or `re-export of Qs.get, laws in LAWS.bend`) so
+   `coverage` does not ask for a law no one can state, then set `coverage`
+   to error. Dotted defs (`http.get`, `text.fill`) are helpers that bolt
+   never grades for coverage, so a noqa on one is itself an S005 finding.
+   Don't keep an `ENTRY.bend` of wrapper laws: a file importing foreign code
+   can only print `SOME PROOFS FAIL`, so its check proves nothing.
    Pin the linter in the lock (`[tools.bolt]` in ez.toml) and relock with
    the pinned ez, so CI's bolt is the one you ran. A command-line program
    also needs a Trusted row for what the compiled Bend runtime does to argv
