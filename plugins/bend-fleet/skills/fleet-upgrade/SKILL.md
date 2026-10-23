@@ -308,10 +308,12 @@ In every repo, one PR:
 - Every `Emerging-Patterns/actions` workflow the repo calls (`ci.yml`,
   `tag.yml`, `publish.yml`, `release-please.yml`, ez's `lock-upgrade.yml`)
   pinned by the same commit SHA, never `@main`.
-- A new repo can lack the account you push workflow changes with (the
-  noah-emp token had no write access to ezmcp or ezsys when they were
-  new). Check `gh api repos/<org>/<repo> -q .permissions.push` for that
-  account before planning a workflow PR there.
+- Pushing a change to `.github/workflows/` over HTTPS needs a token with
+  the `workflow` scope; without it GitHub refuses the push even for an org
+  admin. Add it once with `gh auth refresh -h github.com -s workflow` (a
+  device-code login the user approves) rather than borrowing another
+  account's token, which may have no access to a new repo (noah-emp got a
+  403 on ezmcp and ezsys).
 - `[tools.bolt]` at bolt's new tag. ez has no `add --tool`. Write the table
   with `git`, `tag`, `root = "."` and `entry = "main.bend"`, then run
   `$EZ lock --upgrade --package bolt`, which fills in `rev` and `narHash`.
