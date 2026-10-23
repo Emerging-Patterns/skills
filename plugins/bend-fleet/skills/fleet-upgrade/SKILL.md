@@ -52,9 +52,19 @@ updated in one final pass.
 ## 0. Prepare
 
 - Refresh every clone to its default branch (`git fetch --prune --tags`,
-  `checkout`, `reset --hard origin/<branch>`). Old local branches and stray
+  `checkout`, `merge --ff-only origin/<branch>`; auto mode refuses
+  `reset --hard` even on a clean clone). Old local branches and stray
   files are not the state you are upgrading. Ask before discarding someone's
   uncommitted work; move stray files aside rather than deleting them.
+- **Check for shipped content nobody released.** For each repo,
+  `git diff --stat <last tag> HEAD -- main.bend src/ LICENSE` (the files the
+  entry walks). A `build:` or `chore:` commit that touched one of them
+  changed the package without a release: the 2.0.35/2.0.36 pin PRs moved
+  snap's `io_eff` calls, shake's `cli.bend` and eztoml's `main.bend` that
+  way, so the hub's latest snap no longer built on the bend its own main
+  pinned. The port commit for such a repo is `fix:` (or `feat!:`), so the
+  release carries both. Any commit that changes a walked file is `fix:` or
+  `feat:`, never `build:`.
 - Build the **current ez** (`nix build github:Emerging-Patterns/ez`) and use
   it with the Bend version ez's README names (`bend version`). Every hash in
   this run must come from that pair. An older ez or bend walks packages
@@ -88,10 +98,30 @@ updated in one final pass.
   proof whose imports reach `@unsafe` **or user foreign code** (C/JS
   effects, hub imports included) fails; Base lost helpers such as
   `String.eq.fin` and `Nat.mod.fin`, and some Array/U32 helpers changed
-  shape. Survey first: fetch each repo's deps and run its entry and every
-  PROOF.bend on the new bend (`references/porting.md`). A proof that fails
+  shape. From 2.0.36 to 2.0.38: Base declares `type Event` (`Key`, `Text`,
+  `Mouse`, `Move`, `Look`, `Scroll`, `Close`), so a user constructor of one
+  of those names is a "duplicate declaration" (ezhttp's public `Body.Text`
+  became `Body.Plain`, a breaking rename); `String.eq` is
+  `Cmp.is_eq(String.order.go(a, b, EQ{}))`, so every string-equality lemma
+  is re-proved over `order.go`; `List.any/all/contains/find` short-circuit
+  through `*.if` helpers and `String.starts_with.if(s, p, b)` became
+  `String.starts_with.go.if(p, s, b)`; a compiled program's runtime options
+  go between `+RTS` and `-RTS` (or in `BENDRTS`), so `--threads`, `--gpu`
+  and a plain `--` reach `IO.args` and `--RTS` ends option reading;
+  `TCP.send`'s unsent residue is a `List<&2, U32>`; `F32.round` rounds once
+  (0.49999997 now rounds to 0, which changed ezaudio's MP3 bytes on that
+  edge); a Nat crosses to JS as a number, not a BigInt; `--publish` mines a
+  proof of work (below). Survey first: fetch each repo's deps and run its
+  entry and every PROOF.bend on the new bend (`references/porting.md`).
+  bend stops at the first error in a file, so a survey line is a lower
+  bound: ezjson showed one broken proof and had five. A proof that fails
   only because it imports an effect is fixed by moving the effect into a
   sibling module no law file imports, not by exempting it.
+- **ez carries its own bend.** The ez binary's wrapper puts the bend ez was
+  built with first on PATH, so `ez test` and `ez prove` from an ez built on
+  the old bend run the old bend, whatever is on your PATH. Until ez
+  releases on the target, gate with bend directly, or build ez from a
+  branch that pins the target.
 - **When ez's own gate can't read the new bend**, the interim package flake
   runs the proofs itself: bend at the new rev, the `ez` input pinned to ez's
   own bend rev instead of following, and `checks.proofs` a `runCommand`
@@ -197,19 +227,27 @@ For each package in order:
 6. **Publish** the tag. Normally nothing to do: each repo's
    `release-please.yml` has a `publish` job (shared `publish.yml`) that runs
    when release-please cuts a release and publishes the tag as
-   `<hub-name>@X.Y.Z.0` with the `BEND_HUB_KEY` repo secret. It builds ez from
-   the repo's flake, runs `ez prove`, refuses a missing LICENSE, a
-   `manifest/` entry or a name the hub won't take, then uploads and checks the
-   name resolves. Check the run; if it failed, fix the cause and retry with the
-   repo's `publish.yml` (workflow_dispatch: `tag`, `dry-run`). Run it with
+   `<hub-name>@X.Y.Z.0` with the `BEND_HUB_KEY` repo secret. It builds ez
+   from the repo's flake (`packages.ez`, else the locked `ez` input), gates
+   on the flake's own `checks.<system>.proofs` (on the flake's bend, so the
+   interim flake works; `ez prove` only when there is no such check),
+   refuses a missing LICENSE, a `manifest/` entry or a name the hub won't
+   take, then uploads and checks the name resolves (actions 73b2fbc). Check
+   the run; if it failed, fix the cause and retry with the repo's
+   `publish.yml` (workflow_dispatch: `tag`, `dry-run`). Run it with
    `dry-run` first when anything about the flow changed. See
    `references/github.md`.
-   The job reads the workflow at the release commit: a pin or caller fix must
-   land **before** the release PR merges, or that release publishes with the
-   old one (ez 1.4.0 did; its retry went through `publish.yml`).
-   A tag cut before the repo's tooling moved to the target bend can't be
-   published by CI (its flake builds the old ez); publish such a tag locally
-   with `BEND=<bend> scripts/publish_hash.sh <repo> <tag> <hub-name>`.
+   The release job reads the workflow at the release commit: a pin or
+   caller fix must land **before** the release PR merges, or that release
+   publishes with the old one. The dispatch retry reads the default
+   branch's `publish.yml` and checks out the tag, so it is the fix for a
+   tag cut under an old pin: move the pin on main, then dispatch
+   (shake 0.6.0, snap 1.3.0, ezhttp 0.10.0 and ezjson 1.2.0 went that way).
+   `scripts/publish_hash.sh` is the last resort, for a tag whose own flake
+   can't gate.
+   A version the hub already holds can't be named again: bolt 1.16.0's
+   retry found `bolt` at 1.17.0, cut meanwhile with the same package, so
+   1.16.0 stays off the hub. That is fine; say so.
    Publishing is public and permanent, but content-addressed, so re-publishing
    the same tag returns the same hash. A hub name's version only goes up, so
    when a tag has a defect (old description, missing LICENSE) skip it and
@@ -233,6 +271,10 @@ For each package in order:
    BEND_HUB=http://127.0.0.1:8765 bend main.bend --publish
    ```
 
+   Since 2.0.37 `--publish` first reads the difficulty from the hub's
+   `GET /pow.json` and posts `{"files": .., "nonce": N}`; the oracle answers
+   `{"pow": 1}` (ez #144), so an older oracle fails every upload with
+   `pow.json answered: 404`.
    It takes uploads by hash only. For name questions use the real hub's
    read-only `GET /publish-check` (step 0), never a trial named publish.
    ez's own tests already run this way (`tests/publish.bend`,
@@ -260,7 +302,16 @@ In every repo, one PR:
   lock's `[tools.bolt]` through ez's nix lib: `ez.mkLint { src = self; … }`
   for the lint check, `ez.toolPackage { name = "bolt"; src = self; inherit bend; }`
   or `ez.devPackages self` for the package or shell. Removing the bolt input
-  also removes the duplicate `ez_2` lock node.
+  also removes the duplicate `ez_2` lock node. Runtime flags for a tool
+  wrapper go through `ez.rtsFlags bend [ "--gpu" "off" ]`, which writes
+  `+RTS … -RTS` on bend 2.0.38 and later.
+- Every `Emerging-Patterns/actions` workflow the repo calls (`ci.yml`,
+  `tag.yml`, `publish.yml`, `release-please.yml`, ez's `lock-upgrade.yml`)
+  pinned by the same commit SHA, never `@main`.
+- A new repo can lack the account you push workflow changes with (the
+  noah-emp token had no write access to ezmcp or ezsys when they were
+  new). Check `gh api repos/<org>/<repo> -q .permissions.push` for that
+  account before planning a workflow PR there.
 - `[tools.bolt]` at bolt's new tag. ez has no `add --tool`. Write the table
   with `git`, `tag`, `root = "."` and `entry = "main.bend"`, then run
   `$EZ lock --upgrade --package bolt`, which fills in `rev` and `narHash`.
@@ -307,6 +358,17 @@ Re-run `fleet_graph.py`. Every dep is at the latest tag with `hub=ok`, no
 release, hash, hub, README check, flake ez rev. Also list what you could not
 finish and anything upstream you found (missing proved rows, packages whose
 entry doesn't reach a module the README advertises).
+
+Look for issues users filed against the bend you moved to
+(`gh issue list -R <org>/<repo> --search <version>` in every repo). For
+each one the run fixed: import the released package from the hub with only
+the target bend and confirm the report's failure is gone, then comment
+with the fixing PRs and the hub name and hash, and close it. Releases on
+the hub are permanent, so say which older versions stay broken.
+
+`ez test` is not in CI. Run it on ez with `bin/ez.bin` built from the tree:
+its suites start servers from `src/check/` and can rot unseen (they did,
+from ez 1.4.0's move of `check/` until 1.7.0).
 
 ## One package
 
