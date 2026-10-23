@@ -1,0 +1,23 @@
+{
+  "skill_name": "fleet-upgrade",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "DRY RUN (do not push, merge, open PRs, trigger workflows, or publish; read-only gh/git/curl is fine). The bend repos are cloned under ~/projects/bend. snap just got a breaking release. What exactly would you do to get every Emerging-Patterns package onto the new snap and published? Write the plan with the commands, in order, to plan.md in your outputs dir.",
+      "expected_output": "Maps the fleet (who pins snap via [deps]: ez, bolt), orders the work leaves-first (snap already released; then bolt and ez, bolt before ez because ez pins [tools.bolt]), bumps with `ez add <git> <tag> main.bend` and checks the printed hash, rewrites every import 0x line including LAWS/PROOF/bench with moved paths, ports to snap's public interface only and cites snap's proved SPEC rows as trust rather than re-proving internals, gates with PROOF.bend 'All terms check'/ez test/nix flake check, uses fix(deps)/feat(deps) commits, notes release-please PRs need a close/reopen to start CI, publishes each tag by hash with a current ez (not the stale in-repo workflow) after confirming no publish-as/version, then updates flake ez pins and [tools.bolt] with no bolt flake input, and verifies README snippets as a plain bend user.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "DRY RUN (no writes to GitHub or the hub; read-only is fine). ezjson's README says `import 0xd9c8d4d2899ddda845dfa7525a3568ea/main.bend as Ezjson` and a friend who only has bend says it errors with 'a file at https://hub.bend-lang.com/0xd9c8.../manifest hashing to ...'. Figure out why and write what should change (README text and any release/publish steps) to fix.md in your outputs dir.",
+      "expected_output": "Checks the hash against the hub (404), explains the README names a hash never published (or stale), finds ezjson's latest release tag and its published hash (0x81c67699424929b5c44cd8577e18117f for v1.1.0) or explains how to publish that tag by hash, rewrites Install to lead with a plain-bend hub import naming the version, fixes paths that moved (src/value.bend for the Json type), fixes snippets that break Bend 2.0.27 rules (match on a computed value), and verifies with a clean-HOME bend --check-only run.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "DRY RUN (read-only). I ran the publish workflow on ezimg v1.1.0 and it failed with `ez: ez computed 0xe58b80d0029ca380c4f1cc22dc58e9ac and bend published 0x83c5c81fb41f55ca634bdc7bde39a51b. One of the two package walks has drifted from the other`. Did anything get published? What's the right hash and what do I do now? Answer in answer.md in your outputs dir.",
+      "expected_output": "Explains bend uploaded 0x83c5... before ez's check (so an orphan exists on the hub, harmless because content-addressed), that the drift comes from the repo's flake pinning an old ez/bend whose walk differs from Bend 2.0.27 (LICENSE now in the walk), that the canonical hash comes from the current ez + bend 2.0.27 (publish locally from a clean tag clone, e.g. publish_hash.sh), that publish-as/version must stay unset, and that the fix for the workflow is bumping the repo's flake ez/bend inputs; checks hub for the hashes read-only.",
+      "files": []
+    }
+  ]
+}

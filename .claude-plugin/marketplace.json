@@ -13,6 +13,11 @@
       "name": "bend-ecosystem",
       "source": "./plugins/bend-ecosystem",
       "description": "Find who on GitHub depends on the Emerging-Patterns Bend packages (bolt, ez, the ez libraries), and tell real dependents from mentions and listings."
+    },
+    {
+      "name": "bend-fleet",
+      "source": "./plugins/bend-fleet",
+      "description": "Upgrade ez-managed Bend packages to each other's latest releases, one package or the whole fleet: bump deps leaves first, release, publish to the hub by hash, update flake ez and [tools.bolt] pins, and verify READMEs as a plain Bend user."
     }
   ]
 }
