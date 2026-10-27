@@ -20,25 +20,37 @@ ez's nix lib builds it from the lock's `[tools.bolt]`.
 
   outputs = { self, nixpkgs, ... }@inputs:
     let
-      system = "x86_64-linux";
-      ez = inputs.ez.lib.${system};
-      ezBin = inputs.ez.packages.${system}.default;
-      bend = inputs.bend.packages.${system}.default;
-      bolt = ez.toolPackage { name = "bolt"; src = self; inherit bend; wrapFlags = [ "--gpu" "off" ]; };
-      bend-cc = ez.bend-cc;
-      demo = ez.mkPackage { inherit bend; src = self; pname = "demo"; version = "1.0.0"; entry = "examples/demo/main.bend"; };
+      # every fleet flake builds and checks on these three
+      systems = [ "x86_64-linux" "aarch64-linux" "aarch64-darwin" ];
+      forEach = nixpkgs.lib.genAttrs systems;
+      outputsFor = system:
+        let
+          ez = inputs.ez.lib.${system};
+          ezBin = inputs.ez.packages.${system}.default;
+          bend = inputs.bend.packages.${system}.default;
+          bolt = ez.toolPackage { name = "bolt"; src = self; inherit bend; wrapFlags = ez.rtsFlags bend [ "--gpu" "off" ]; };
+          bend-cc = ez.bend-cc;
+          demo = ez.mkPackage { inherit bend; src = self; pname = "demo"; version = "1.0.0"; entry = "examples/demo/main.bend"; };
+        in {
+          packages = { inherit bend demo bend-cc; ez = ezBin; inherit bolt; default = demo; };
+          apps.default = { type = "app"; program = "${demo}/bin/demo"; };
+          checks = {
+            inherit demo;
+            proofs = ez.mkProofs { ez = ezBin; src = self; };
+            lint = ez.mkLint { src = self; };      # bolt from ez.lock.toml [tools.bolt]
+          };
+          devShells.default = ez.mkShell {
+            src = self;                            # adds every locked [tools.*]
+            packages = [ bend bend-cc ezBin ];
+          };
+        };
+      perSystem = forEach outputsFor;
+      each = name: forEach (system: perSystem.${system}.${name});
     in {
-      packages.${system} = { inherit bend demo bend-cc; ez = ezBin; inherit bolt; default = demo; };
-      apps.${system}.default = { type = "app"; program = "${demo}/bin/demo"; };
-      checks.${system} = {
-        inherit demo;
-        proofs = ez.mkProofs { ez = ezBin; src = self; };
-        lint = ez.mkLint { src = self; };          # bolt from ez.lock.toml [tools.bolt]
-      };
-      devShells.${system}.default = ez.mkShell {
-        src = self;                                # adds every locked [tools.*]
-        packages = [ bend bend-cc ezBin ];
-      };
+      packages = each "packages";
+      checks = each "checks";
+      apps = each "apps";
+      devShells = each "devShells";
     };
 }
 ```
@@ -48,7 +60,7 @@ and in `ez.toml`:
 ```toml
 [tools.bolt]
 git = "https://github.com/Emerging-Patterns/bolt"
-tag = "v1.11.0"
+tag = "v1.19.0"
 root = "."
 entry = "main.bend"
 ```
@@ -56,6 +68,14 @@ entry = "main.bend"
 After `ez lock --upgrade --package bolt` and `nix flake lock`, `flake.lock`
 holds exactly `bend`, `ez` and `nixpkgs`, with no `bolt` and no `ez_2`. If it
 still has either, some input is missing its `follows`.
+
+The three systems need ez v1.12.0 or later (its `lib.${system}` and
+`packages.${system}` cover them) and bolt v1.19.0 or later in `[tools.bolt]`.
+`ci.yml` calls `nix-flake-check.yml` at actions 5b0aa4f or later, which runs
+`nix flake check` on Linux x86_64, Linux arm64 and macOS arm64 runners. A
+`nix flake check --no-build --all-systems` on one machine can't stand in for
+those runners: building `[tools.bolt]` is import-from-derivation, so it stops
+at the first foreign system.
 
 ez's lib (`nix/lib.nix`): `mkPackage`, `mkProofs { ez, src, name?, lock?,
 bendLib? }`, `mkLint { src, bolt?, bend?, name?, lock?, bendLib? }`,
