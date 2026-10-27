@@ -21,7 +21,8 @@ checkout the default branch, merge --ff-only). For every repo it reports:
            can fetch from the hub. Hub imports (0x…, name@…) are not walked.
   hub    - whether the latest tag is on the hub under the repo's hub name
            (--names repo=name,…; default ezx for ez, the repo name for
-           bolt/shake/snap, emerging-<repo> otherwise), from
+           bolt/shake/snap/ezhttp/ezjson/ezsys/ezmcp, emerging-<repo>
+           otherwise), from
            GET <hub>/name/<name>@X.Y.Z.0
 
 Then it prints a topological order over [deps] edges (package content), which
@@ -81,7 +82,8 @@ def on_hub(h):
 
 
 LOCAL = re.compile(r'^\s*import\s+(?:"(\.\.?/[^"]+)"|(\.\.?/\S+\.bend))')
-OWN_NAMES = {"ez": "ezx", "bolt": "bolt", "shake": "shake", "snap": "snap"}
+OWN_NAMES = {"ez": "ezx", "bolt": "bolt", "shake": "shake", "snap": "snap",
+             "ezhttp": "ezhttp", "ezjson": "ezjson", "ezsys": "ezsys", "ezmcp": "ezmcp"}
 
 
 def read_at(path, rev, rel):

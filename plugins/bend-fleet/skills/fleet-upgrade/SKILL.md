@@ -144,8 +144,11 @@ updated in one final pass.
   bend accepts any `[a-z][a-z0-9-]{0,63}`, and the hub decides: 12 to 64
   characters register free on first publish, 3 to 11 are auctioned (Bender
   credits, bid at `hub.bend-lang.com/n/<name>`), shorter ones are refused.
-  The Emerging-Patterns fleet owns `bolt`, `snap`, `shake` and `ezx` (ez's
-  library; `ez` is too short); the rest publish as `emerging-<repo>`.
+  The Emerging-Patterns fleet owns `bolt`, `snap`, `shake`, `ezx` (ez's
+  library; `ez` is too short), `ezhttp`, `ezjson`, `ezsys` and `ezmcp`; the
+  rest publish as `emerging-<repo>`. ezhttp and ezjson published as
+  `emerging-ezhttp`/`emerging-ezjson` through 0.22.0/1.4.0; those releases
+  stay on the hub under the old names.
   Before publishing, ask the hub, read-only, with the `bend login` key
   (`~/.bend/bender.json`) as a bearer token:
   `GET https://hub.bend-lang.com/publish-check?name=N&version=X.Y.Z.0` must
