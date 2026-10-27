@@ -43,7 +43,7 @@ for b in blocks:
     if not re.search(r"^import (0x[0-9a-f]{32}|[a-z][a-z0-9-]*@[0-9.]+)/", b, re.M):
         continue
     n += 1
-    if not re.search(r"^def main\(", b, re.M):
+    if not re.search(r"^(@\w+ )*def main\(", b, re.M):
         b += "\n\ndef main() -> String:\n  \"ok\"\n"
     (out / f"snippet{n}.bend").write_text(b)
 print(n)
