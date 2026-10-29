@@ -4,12 +4,17 @@
 The hub's own search (search.json) matches package names, descriptions and
 file names only, returns at most 50 packages, and never looks inside files.
 Many packages also have an empty description, or no name at all. So this runs
-up to three passes per term and merges them:
+up to four passes per term and merges them:
 
   1. hub search:   search.json?q=<term>
   2. full crawl:   every version in packages.json, matched on name,
                    description and file paths (catches what the 50-cap drops)
-  3. --content:    the .bend files of the latest version of every named
+  3. JendHub:      jend.leeeet.dev/search.txt?query=<term>, a ranked search
+                   of the definitions of Base and of the latest valid release
+                   of every package, by task words, names and types. It
+                   always returns its best guesses, so a hit here is only as
+                   good as its signature (--no-jendhub skips it)
+  4. --content:    the .bend files of the latest version of every named
                    package (plus every pass-1/2 hit), grepped for the term in
                    `def`/`type` lines and comments
 
@@ -30,6 +35,7 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 HUB = "https://hub.bend-lang.com"
+JEND = "https://jend.leeeet.dev"
 CACHE = Path.home() / ".cache" / "bend-hub"
 
 
@@ -77,6 +83,39 @@ def file_text(h, f):
     return p.read_text(errors="replace")
 
 
+def jend(term, limit):
+    """JendHub's best definitions for `term`: package, version, file, name and
+    the def/type/law line. Its first answer after a cold start can be a 502,
+    so it retries."""
+    url = f"{JEND}/search.txt?" + urllib.parse.urlencode(
+        {"query": term, "limit": limit})
+    for attempt in range(3):
+        try:
+            with urllib.request.urlopen(url, timeout=60) as r:
+                text = r.read().decode(errors="replace")
+            break
+        except Exception as e:
+            err = e
+    else:
+        raise err
+    hits = []
+    for block in text.split("\n\n"):
+        m = re.match(r"\d+\. \S+ \((\S+)\)", block)
+        if not m:
+            continue
+        q = urllib.parse.parse_qs(urllib.parse.urlparse(m[1]).query)
+        path, name = q["path"][0], q["name"][0]
+        pkg, _, f = path.partition("/")
+        pkg, _, ver = pkg.partition("@")
+        head = [l.strip() for l in block.splitlines()[2:]]
+        sig = next((l for l in head if l.startswith(("def ", "type ", "law ",
+                                                      "@unsafe def"))),
+                   head[-1] if head else name)
+        hits.append({"package": pkg, "version": ver or None, "file": f,
+                     "name": name, "sig": sig, "url": m[1]})
+    return hits
+
+
 def key(p):
     return p.get("name") or p["hash"]
 
@@ -105,7 +144,7 @@ def grep_content(p, rx):
     return hits
 
 
-def search(term, pkgs, own, content, workers):
+def search(term, pkgs, own, content, workers, jend_limit):
     rx = re.compile(re.escape(term), re.I)
     found = {}  # key -> {"pkg": newest matching version, "why": set()}
 
@@ -133,7 +172,23 @@ def search(term, pkgs, own, content, workers):
         if any(rx.search(f) for f in (p.get("files") or {})):
             note(p, "file")
 
-    # pass 3: inside the files of the newest version of each package
+    # pass 3: JendHub's ranked search of definitions
+    if jend_limit:
+        try:
+            newest = latest(pkgs)
+            exact = {(q.get("name"), q.get("version")): q for q in pkgs}
+            for h in jend(term, jend_limit):
+                p = (exact.get((h["package"], h["version"]))
+                     or newest.get(h["package"]) or {
+                    "name": h["package"], "version": h["version"],
+                    "hash": "-", "files": {h["file"]: None}})
+                note(p, "jendhub")
+                found[key(p)]["defs"].append(
+                    f"{h['file']}: {h['sig'][:100]}  ({h['url']})")
+        except Exception as e:
+            print(f"JendHub search failed for {term!r}: {e}", file=sys.stderr)
+
+    # pass 4: inside the files of the newest version of each package
     if content:
         newest = latest(pkgs)
         scan = [p for k, p in newest.items() if p.get("name")]
@@ -144,13 +199,14 @@ def search(term, pkgs, own, content, workers):
                                              scan)):
                 if hits:
                     note(p, "content")
-                    found[key(p)]["defs"] = hits
+                    found[key(p)]["defs"] += hits
 
     rows = []
     for k, e in found.items():
         p = e["pkg"]
         owner = own.get(p.get("name"), "?") if p.get("name") else "-"
-        deps = max((q.get("dependents") or 0) for q in pkgs if key(q) == k)
+        deps = max([(q.get("dependents") or 0) for q in pkgs if key(q) == k],
+                   default=0)
         rows.append({
             "name": p.get("name"), "version": p.get("version"),
             "hash": p["hash"], "owner": owner, "dependents": deps,
@@ -196,6 +252,10 @@ def main():
     ap.add_argument("--content", action="store_true",
                     help="also grep def/type lines and comments inside .bend files")
     ap.add_argument("--json", action="store_true", help="print JSON, not markdown")
+    ap.add_argument("--no-jendhub", action="store_true",
+                    help="skip the JendHub definition search")
+    ap.add_argument("--jendhub-limit", type=int, default=10,
+                    help="JendHub results per term (1-50)")
     ap.add_argument("--max-defs", type=int, default=8)
     ap.add_argument("--workers", type=int, default=16)
     a = ap.parse_args()
@@ -204,11 +264,14 @@ def main():
     pkgs, own = crawl(), owners()
     print(f"{len(pkgs)} versions, owners known for {len(own)} names",
           file=sys.stderr)
-    results = {t: search(t, pkgs, own, a.content, a.workers) for t in a.terms}
+    jl = 0 if a.no_jendhub else max(1, min(a.jendhub_limit, 50))
+    results = {t: search(t, pkgs, own, a.content, a.workers, jl)
+               for t in a.terms}
     if a.json:
         json.dump(results, sys.stdout, indent=1)
         return
     passes = "hub search, names/descriptions/file names"
+    passes += f", JendHub (top {jl} definitions)" if jl else ""
     passes += ", file contents" if a.content else " (not file contents: add --content)"
     named = len({p["name"] for p in pkgs if p.get("name")})
     print(f"# Bend hub search\n\nSearched {len(pkgs)} package versions "
