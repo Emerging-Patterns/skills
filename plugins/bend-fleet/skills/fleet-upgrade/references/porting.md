@@ -21,14 +21,14 @@ dependency's parser to show something about the dependent, replace that
 reasoning with the dependency's proved guarantee:
 
 - import only the dependency's public entry (`0x…/main.bend`);
-- add the rows you rely on (e.g. `SHAKE-PARSE-1`) to the dependent's SPEC.md
-  trust section, with the release they were proved at, the way ezjson's
-  `JSON-TRUST-*` rows record what it takes from Bend;
-- state the dependent's law as resting on that row, with a comment citing
-  it;
+- cite the dependency's law files you rely on (e.g. `eztoml's
+  laws/GetFindsFirstPair.bend`) in the prose of the dependent's guarantee
+  that rests on them, with the release they were proved at;
+- state the dependent's law as resting on that guarantee, with a comment
+  citing it;
 - move laws that were really about the dependency out. If the dependency
-  lacks a proved row the dependent needs, open that upstream as a proof to
-  add there.
+  lacks a proved guarantee the dependent needs, open that upstream as a
+  proof to add there.
 
 This shrinks the dependent's proof base. Each fact is then proved once, in
 the package that owns it, and dependents stop breaking when the dependency
@@ -38,7 +38,7 @@ refactors its internals.
 
 One subagent per dependent repo, each with: the repo path and branch, the
 new dependency tag and hash, the latest ez binary path, the trust rule above,
-the gate (every PROOF.bend prints `ALL PROOFS CHECK`, `ez test`, `nix flake check`),
+the gate (`bend PROOF.bend` prints `ALL PROOFS CHECK`, `ez test`, `nix flake check`),
 and "open a PR, don't merge". Keep publishing and merging in the parent, so
 every hub upload and release goes through one place in dependency order.
 Forward new tags and hashes to a waiting subagent as they are published.
@@ -55,7 +55,7 @@ give each one only its repo and what is particular to it ("read and follow
   `/name/<name>@X.Y.Z.0`; other sessions release while you run, and a
   stale table sends agents to old versions;
 - the breaks to expect, from the release notes and the survey;
-- the rules: honest proofs, trust a dependency's rows, the commit type
+- the rules: honest proofs, trust a dependency's proved law files, the commit type
   decides the release, refresh with `merge --ff-only`, which token pushes
   workflow files, don't merge or publish, wait for green CI, and what the
   report must say.

@@ -12,16 +12,16 @@ descriptions are good models for your own.
 - The World, the planner and the interpreter
 - The design doc, the spike and the work packages
 - Law quality
-- Linter rules as requirements
+- Linter rules as guarantees
 - The gates in CI
 - Tool pins
 
 ## Phases
 
-Each phase leaves the repo consistent: gate green, lint clean, SPEC.md
-honest about what is pending. Decided behavior changes land as their own
-PRs alongside the phases; the only ordering is that a row cannot be proved
-before the change it depends on.
+Each phase leaves the repo consistent: gate green, lint clean, the law
+files honest about what is not proved yet. Decided behavior changes land
+as their own PRs alongside the phases; the only ordering is that a
+guarantee cannot be proved before the change it depends on.
 
 | Phase | ez | bolt |
 | :---- | :---- | :---- |
@@ -31,27 +31,35 @@ before the change it depends on.
 | Three | the World and planner for the most important command, then its rows | token rules, then tree rules by how often they fire |
 | Later | one command per phase, each ending with its rows proved | the lint planner, `trace`, the checker oracle, the LSP |
 
+Both kept their requirement list in SPEC.md, checked by bolt's `trace`
+rule, which bolt#257 removed. A project starting now lands law files in
+phase one (spec-first-feature's `references/adopting.md`) and has no
+traceability step.
+
 Order the proving by cost, cheap and structural first: order independence,
 framing, refusals, then content properties like round trips. This proves
-the cheap rows early and tells you how expensive the hard ones really are.
-A row that turns out too expensive moves to Trusted with a written reason,
-which is a visible weakening the maintainer approves, never a silent one.
+the cheap guarantees early and tells you how expensive the hard ones
+really are. A guarantee that turns out too expensive to prove becomes a
+trusted comment on the code with a written reason, which is a visible
+weakening the maintainer approves, never a silent one.
 
 Behavior changes in ez came in between: the proof gate as its own command
 (#54), the lock's inputs (#55), the gitignore allowlist (#56), tag
 selection (#57), UTF-8 hashing (#58), bootstrap without nix (#59), the
 fresh-clone CI check (#61), the tool cache key (#62), the ledger fixes
 (#67). Each one proved its decision function with quantified laws even
-when the row stayed pending, and each PR listed what it left pending.
+when the requirement stayed pending, and each PR listed what it left
+unproved.
 
 ## Retiring closed laws
 
 Delete first the closed laws that point toward no requirement: wording
-pins, helper pins, tests of the test runner, vectors for Trusted claims,
+pins, helper pins, tests of the test runner, vectors for trusted claims,
 and refactor-equivalence laws with their `old.*` definitions. They pin
 behavior nobody decided to guarantee.
 
-For closed laws that illustrate a pending row there are two options, and
+For closed laws that illustrate an unproved guarantee there are two
+options, and
 the maintainer picks:
 
 - **Delete them all at once** (bolt, and in the end ez). Recommended. A
@@ -60,17 +68,17 @@ the maintainer picks:
   encoded wrong assumptions about Bend (`report_import` pinned a location
   format bend no longer prints), so keeping them would have pointed the
   next author at the wrong behavior.
-- **Keep them as `# toward <ID>` trails** until the row's quantified law
-  lands, deleting each in that PR. ez did this for 53 laws under bolt
+- **Keep them as `# toward <ID>` trails** until the guarantee's quantified
+  law lands, deleting each in that PR. ez did this for 53 laws under bolt
   v0.9.0's `quantify`, which exempted a trail. It kept ez on an old bolt,
-  and once every pending row's real law was written in an accepted design
-  doc, the trails told nobody anything. ez deleted the last 40 in one
-  change (#69) and moved to strict `closed` and `trace`.
+  and once every unproved guarantee's real law was written in an accepted
+  design doc, the trails told nobody anything. ez deleted the last 40 in
+  one change (#69) and moved to strict `closed`.
 
-A law file whose laws all go is deleted with its PROOF.bend and any
-fixtures only it used. Keep a closed law's helper only if a quantified
-proof uses it as a lemma, and then move it into PROOF.bend next to that
-proof (ez's `comp_dot`).
+A law file whose laws all go is deleted with its proof file, its imports
+and any fixtures only it used. Keep a closed law's helper only if a
+quantified proof uses it as a lemma, and then move it into that proof's
+file (ez's `comp_dot`).
 
 ## The World, the planner and the interpreter
 
@@ -85,8 +93,8 @@ Laws only reach values, so every IO area in scope is split three ways:
   is taken by Bend's Base). It decides everything: what to write, with
   what bytes, and the exit status;
 - an **interpreter**: reads the World, executes the plan's effects in
-  order, and decides nothing. Its faithfulness is one Trusted row, so keep
-  it small enough to review line by line.
+  order, and decides nothing. Its faithfulness is trusted, not proved, and
+  its header says so, so keep it small enough to review line by line.
 
 When the planner's inputs depend on earlier answers (an import graph, a
 remote's tags), do not prefetch everything. Use an ask and answer loop:
@@ -113,14 +121,14 @@ Before converting a large area, write a design doc
   gathers each field;
 - which effects and outputs are contractual and which are incidental;
 - the module layout, and how much existing code moves unchanged;
-- per requirement: the law statement, which existing laws it reuses,
+- per guarantee: the law statement, which existing laws it reuses,
   which closed laws it replaces, and an effort estimate (small, medium,
   large, with line counts where you can);
 - a **spike**: the riskiest law proved against the real checker, in a
   directory nothing imports, inside the proof gate. ez's spike proved
   `clone_reproduces` and the hardest string lemmas of the lock round trip,
-  which is why the design could say no row in the phase looked expensive
-  enough to move to Trusted. Delete the spike when the real planner lands;
+  which is why the design could say no guarantee in the phase looked
+  expensive enough to leave trusted. Delete the spike when the real planner lands;
 - open questions as REVIEW items with a recommendation each, all resolved
   by the maintainer before work starts;
 - **work packages** with a dependency DAG (an ASCII diagram in a
@@ -161,9 +169,9 @@ frame laws, both directions for "exactly"). At rollout scale, also:
   law. The reference can share the implementation's misreading, which is
   the refactor-equivalence pattern both projects deleted. State the
   property instead.
-- **A law can be partial.** Tag it with the row's ID, list it in the Law
-  cell, and say what is left in "Left to prove". A tagged partial law is
-  checked by `trace`; an untagged one is protected by nothing.
+- **A guarantee can be partly proved.** Its law file holds the laws that
+  are proved, and its prose says what is left. Those laws are checked by
+  the gate; a claim kept only in an issue is protected by nothing.
 - **Isolate the catch.** A mutant that an older law already catches fails
   the gate there first, which says nothing about the new law. Run
   `scripts/isolate_mutant.py` in a scratch copy to see the new proof fail
@@ -174,7 +182,8 @@ frame laws, both directions for "exactly"). At rollout scale, also:
 
 A parser, a tokenizer or any fold over input is a state machine, and
 replaying the whole input in each law does not scale. shake's walker laws
-took these shapes, and every row of its parse group was proved with them:
+took these shapes, and every guarantee of its parse group was proved with
+them:
 
 - **Premise form.** A step law holds wherever the words before leave the
   walker in the state it names: `for pre, st, h_at: {walk(pre, start) == st}`,
@@ -202,10 +211,10 @@ took these shapes, and every row of its parse group was proved with them:
   failed for the rest of the words (`fail_stays`), so each refusal law is
   "this step fails from the state named", through one general `refused`.
 
-## Linter rules as requirements
+## Linter rules as guarantees
 
-For a lint rule's row, write two kinds of law, tagged with the rule's ID
-(bolt's `put_counts`, `nat_counts`, `param_counts`, `escape_counts`):
+For a lint rule, write two kinds of law in its law file (bolt's
+`put_counts`, `param_counts`, `escape_counts`):
 
 - **completeness as a count equality**: for every token list (or tree) and
   path, the number of findings equals a small independent counter of the
@@ -223,13 +232,14 @@ repositories and read every finding; see spec-first-feature's
 
 ## The gates in CI
 
-- **The proof gate** as its own command, run in CI: for every PROOF.bend,
-  the first line of output is exactly `All terms check.` Exit status alone
-  is not enough, because bend exits 0 and prints `All terms check, but N
-  defs rely on unsafe or foreign code:` when a proof leans on an unchecked
-  def. ez added `ez prove` for this (#54) and dropped its unit tests.
-- **bolt over the whole tree** with the pinned version, `closed` and
-  `trace` at error. `trace` only runs on a whole-tree lint.
+- **The proof gate** as its own command, run in CI: the first line
+  `bend PROOF.bend` prints is exactly `ALL PROOFS CHECK`. Check the line,
+  not only the exit status: older bends exited 0 with `All terms check,
+  but N defs rely on unsafe or foreign code:` when a proof leaned on an
+  unchecked def. ez added `ez prove` for this (#54) and dropped its unit
+  tests.
+- **bolt over the whole tree** with the pinned version and `closed` at
+  error. Project rules only run on a whole-tree lint.
 - **A direct check of the headline guarantee** where one exists. ez's
   `fresh` flake check copies the tracked files into a new repo, fills
   BEND_LIB offline, builds the README's way, deletes the lock, relocks and

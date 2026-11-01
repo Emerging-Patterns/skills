@@ -120,14 +120,16 @@ These cost shake's walker proofs most of their failed checks.
   both branches are evaluated. Never put a different recursive call in
   each branch.
 - `bend x.bend` runs `main` after checking; use `--check-only` to check.
-- **bend exits 0 when a proof relies on unsafe or foreign code**, printing
-  `All terms check, but N defs rely on unsafe or foreign code:`. The gate
-  must read the first line, not the exit status.
+- **A proof whose imports reach `@unsafe` or foreign code fails.** bend
+  2.0.34 and later print `SOME PROOFS FAIL` and exit 1; older bends exited
+  0 with `All terms check, but N defs rely on unsafe or foreign code:`. So
+  no proof imports a module holding a foreign effect: it takes the effect
+  as a service. The gate reads the first line, not only the exit status.
 
 ## The proof gate
 
-Run every PROOF.bend and require the exact first line `All terms check.`
-(`ez prove` in ez). Proofs are slow on large files (bolt's closed-law
+Run `bend PROOF.bend` at the package root and require the exact first
+line `ALL PROOFS CHECK` (`ez prove` in ez). Proofs are slow on large files (bolt's closed-law
 PROOFs took 84 s and 34 s); run them in parallel under a memory cap, as
 `ez prove` does, rather than serially.
 

@@ -29,13 +29,14 @@ list; the DAG says which can run in parallel.
 Give each agent:
 
 - the goal as the RFC or design doc states it, with the section to read,
-  and the rows it should land or leave pending;
+  and the guarantees it should prove or leave partly proved;
 - current main as the base, not a tagged release (an agent briefed against
   a release re-derives work that already merged);
 - the exact checks to run and report: the proof gate count, bolt's error
   count, the fresh-clone `cmp`, and master-versus-branch runs for each
   behavior change;
-- which laws must not change (tagged statements are human-owned);
+- which laws must not change (an existing law file's statement changes
+  only with the user's agreement);
 - its own build script and scratch paths (below);
 - the instruction to merge origin's main into its branch before it
   reports, so the lead verifies what will actually merge;
@@ -75,11 +76,11 @@ Read the diff for things that pass every check and are still wrong:
 - values specific to the agent's machine in committed files. One agent
   recorded absolute paths in the committed ledger, which would have broken
   the headline guarantee on every other machine. It was sent back;
-- a tagged law's statement edited to make a proof go through;
-- a closed law, a `tests/*.bend` file, or a Trusted row added without a
-  reason;
+- a law file's statement edited to make a proof go through;
+- a closed law, a `tests/*.bend` file, or a trusted comment added without
+  a reason;
 - a decision left inside IO where a pure function would fit;
-- SPEC.md, the RFC and the inventory not updated together.
+- the law files, the RFC and the inventory not updated together.
 
 Send it back with the specific problem rather than fixing it yourself, so
 the agent's worktree and report stay consistent.
@@ -105,7 +106,7 @@ resumed.
   public and permanent. Use a local oracle hub (ez's `check/serve.bend`)
   or a dead address, and know the limits of each.
 - **Never put model identifiers in repository artifacts**: code, docs,
-  commit messages beyond the session's attribution lines, SPEC.md, RFCs.
+  commit messages beyond the session's attribution lines, law files, RFCs.
 - Never lower a bolt level to get a PR green; that is a policy decision
   for the maintainer.
 - Never push to or merge into main without the checks having run.

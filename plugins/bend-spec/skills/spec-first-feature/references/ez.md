@@ -1,9 +1,15 @@
 # ez specifics
 
-Read these first: ez's README.md; SPEC.md (the Tagging section and "Left to
-prove"); `docs/rfc/ez-spec.md`; and `docs/rfc/ez-lock-planner.md`, which is
-the worked example of a command in planner form. Where they disagree with
-this file, they win.
+Read these first: ez's README.md; its root LAWS.bend and `laws/` (or
+SPEC.md, below);
+`docs/rfc/ez-spec.md`; and `docs/rfc/ez-lock-planner.md`, which is the
+worked example of a command in planner form. Where they disagree with this
+file, they win.
+
+ez kept a SPEC.md when this was written. Until it moves to `laws/`
+(`references/adopting.md`), this file names its guarantees by the
+requirement IDs SPEC.md and the RFC give them; once it has moved, find the
+law file that took each one over.
 
 ## Commands are planners
 
@@ -36,17 +42,18 @@ the World, and repeat until `wants` is empty. Then it calls `plan` and runs
 the effects in order. An `Answer` keeps the other program's output as it was
 printed, so reading that output is the planner's decision, not the
 interpreter's. A law ties the two halves together: when `wants(w)` is empty,
-`plan(w)` asks nothing. The interpreter's faithfulness is one Trusted row
-(EZ-TRUST-2), so keep it small enough to review line by line.
+`plan(w)` asks nothing. The interpreter's faithfulness is trusted, not
+proved, and its header says so, so keep it small enough to review line by
+line.
 
 A new command or flag is written in this form from the start. A change to a
 command that hasn't been converted yet either converts the part it touches,
 or puts its new decision in a pure helper that the eventual planner can call.
 
-## Rows the known bugs became
+## Guarantees the known bugs became
 
-The audit's IO bugs were each turned into a decided requirement. Read these
-rows before writing a similar one, and extend them rather than adding a
+The audit's IO bugs were each turned into a decided guarantee. Read these
+before writing a similar one, and extend them rather than adding a
 near-duplicate:
 
 - **EZ-LED-6**: `init` and `remove` refuse and write nothing, where they
@@ -62,18 +69,20 @@ near-duplicate:
   Effect constructor that writes or removes (WP2 adds `Drop`), make
   `writes.one` count it, or the law stops covering it.
 
-Some accidental behavior was fixed without becoming a row: `.ez` and `bin`
-being created in the current directory, and `ez doctor` failing a project
-with no deps. Those have untagged quantified laws and a note in
-`docs/rfc/ez-law-inventory.md`. Treat similar incidental fixes the same way
+Some accidental behavior was fixed without becoming a guarantee: `.ez` and
+`bin` being created in the current directory, and `ez doctor` failing a
+project with no deps. Those have quantified laws that promise nothing and a
+note in `docs/rfc/ez-law-inventory.md`. Treat similar incidental fixes the same way
 (SKILL.md step 1).
 
 ## Where ez's trust lives
 
-The Trusted rows point at other programs: git (EZ-RES-7), nix (EZ-HASH-5),
+What ez trusts is other programs: git (EZ-RES-7), nix (EZ-HASH-5),
 `bend --publish` (EZ-HASH-4), the hub (EZ-TRUST-3), and the proofs of pinned
-dependencies (EZ-TRUST-5, EZ-HASH-6). A feature that leans on a new external
-answer needs a new Trusted row. Where you can, design it so ez checks the
+dependencies (EZ-TRUST-5, EZ-HASH-6). In the law layout each is a
+`# Trusted, not proved:` comment on the code that asks, or, for a
+dependency, a citation of its law file. A feature that leans on a new
+external answer adds one. Where you can, design it so ez checks the
 answer instead. The hub is trusted only for availability, because ez checks
 every body against its hash (EZ-FETCH-1).
 
@@ -81,7 +90,7 @@ Compare before acting, not after. The one known exception is EZ-PUB-2:
 `bend --publish` can't report the hash without uploading, so `ez publish`
 can only compare bend's answer with its own hash after the upload has
 happened. Don't copy that shape into a new command. If a new feature also
-has to act before it can check, say so in its row.
+has to act before it can check, say so in its guarantee's prose.
 
 Be wary of reimplementing git or NAR plumbing. Each reimplementation is
 another place where ez can diverge from the real tool.
@@ -92,7 +101,7 @@ Once commands are planners, laws that span commands become possible. They
 are the most valuable kind of law: "`ez add` then `ez lock` on a fresh clone
 reproduces the lock `ez add` wrote", or "`ez lock --check` fails exactly when
 `ez lock` would change the lock". When a feature makes one of these statable,
-add the row.
+add the law file.
 
 ## Gate
 
@@ -105,10 +114,10 @@ add the row.
   `BEND_LIB=$PWD/.ez/lib bend ez/main.bend -o bin/ez.bin`, then
   `bin/ez.bin prove`. Run this too when a change touches bootstrap, the
   build, or the lock.
-- bolt: ez pins a bolt main commit with bolt#106 (`[tools.bolt]` in
-  ez.toml), with `closed` (L002, strict) and `trace` (L005) at error in
-  `bolt.bend`, and `laws` at warn for `coverage` advice. `trace` checks
-  SPEC.md against the tags on every whole-tree lint.
+- bolt: the pin is `[tools.bolt]` in ez.toml, with `closed` (L002, strict)
+  at error in `bolt.bend` and `laws` at warn for `coverage` advice. Moving
+  to the law layout needs a bolt with #257, which removed `trace` (L005);
+  delete `def trace()` from `bolt.bend` in the same change.
 
 Never run `ez publish` or `bend --publish`. An upload is public and can't be
 undone.
@@ -116,8 +125,9 @@ undone.
 ## Migration leftovers
 
 ez had `# toward EZ-X-N` trails, closed laws kept during consolidation. All
-of them were deleted in ez#69 and strict `closed` forbids new ones, so a
-pending row's statement lives in SPEC.md, the RFC and the design docs only.
+of them were deleted in ez#69 and strict `closed` forbids new ones, so what a
+partly proved guarantee still lacks lives in its prose, the RFC and the
+design docs only.
 
 ez has no AGENTS.md. Its Bend gotchas are collected in the
 analyze-specify-prove skill's `references/bend-gotchas.md`, in this plugin.

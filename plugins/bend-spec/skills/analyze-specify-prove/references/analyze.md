@@ -160,10 +160,10 @@ was rejected in writing because it relies on output bend does not promise.
 Put each finding under one heading, with "Confirmed" or "by reading":
 
 - **Behavior the code guarantees that no requirement mentions.** Often
-  good quantified laws with no row (ez's ledger model laws became
+  good quantified laws with no requirement (ez's ledger model laws became
   EZ-LED-1 to 5).
-- **Behavior that looks accidental.** Candidates for a fix, a row, or
-  nothing. Do not decide here; list them for the maintainer.
+- **Behavior that looks accidental.** Candidates for a fix, a guarantee,
+  or nothing. Do not decide here; list them for the maintainer.
 - **Requirements with no corresponding code.** The draft promised
   something nobody built (ez's `ez: <area>:` error prefix).
 - **Bugs.** The code breaks a requirement everyone agrees on.
@@ -181,10 +181,10 @@ Two outcomes are possible per rule, and REVIEW-2 decided the policy: fix
 the code where the header states the intent users rely on, and narrow the
 header where the code's behavior is a deliberate heuristic (`fuel`
 matching by parameter name). Stating the broad header as a requirement
-would make the row fail forever.
+would leave it unprovable forever.
 
 A run over sibling repositories (ez, eztoml, ezhttp, ezjson, snap, shake)
 is a good way to find a rule's false positives. It is a development tool,
 not evidence: a corpus snapshot is a closed law on a bigger input. Treat
-each false positive it surfaces as a counterexample the row's law must
+each false positive it surfaces as a counterexample the rule's law must
 rule out.

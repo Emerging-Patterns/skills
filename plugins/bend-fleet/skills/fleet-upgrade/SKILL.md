@@ -198,10 +198,11 @@ For each package in order:
 2. **Breaking changes**: read the dependency's CHANGELOG. Port the dependent to
    the dependency's **public interface** only (its `main.bend`). A dependent
    must not import or prove a dependency's internals (`src/…`). It takes what
-   the dependency proves as trusted: cite the dependency's SPEC row IDs in the
-   dependent's SPEC.md trust section, and state the dependent's laws over its
-   own code. If a dependent needs a property the dependency doesn't prove, the
-   fix is a new proved row upstream, not a private proof downstream. Large
+   the dependency proves as trusted: cite the dependency's law files (e.g.
+   `eztoml's laws/GetFindsFirstPair.bend`) in the prose of the dependent's
+   guarantees that rest on them, and state the dependent's laws over its own
+   code. If a dependent needs a property the dependency doesn't prove, the
+   fix is a new proved guarantee upstream, not a private proof downstream. Large
    ports suit one subagent per repo (see `references/porting.md`).
    Read the changelog for **semantic** changes too, not just the ones that
    stop compilation. snap 1.0.0 began returning stdout and stderr
@@ -209,10 +210,10 @@ For each package in order:
    every caller that parsed combined output by position had to be audited.
    If the dependent's own users will see a change, say so in a
    `BREAKING CHANGE:` footer so it lands in the release notes.
-   A row the dependency still lists as pending is weaker than a proved one.
-   Adopting that release means the dependent's laws rest on an unproved row.
-   That's the maintainer's call. Record the row as trusted-but-pending in the
-   trust section, so the weakness stays visible.
+   A guarantee whose prose says it is only partly proved is weaker than a
+   proved one. Adopting that release means the dependent's laws rest on an
+   unproved claim. That's the maintainer's call. Say so where the dependent
+   cites it, so the weakness stays visible.
 3. **Gate** with the current ez and bend: `bend <entry> --check-only`, every
    `PROOF.bend` prints `ALL PROOFS CHECK` (`$EZ prove`), `$EZ test`, and `nix flake check` if
    you can. LAWS files listing TODOs are normal (the proof discharges them).
@@ -348,6 +349,11 @@ In every repo, one PR:
   group) to warn, with a comment. Open one issue per repo with counts by rule
   and file, and link it from the commit. The maintainer decides when the
   levels go back up.
+- **`trace` is gone.** On the first bolt release with bolt#257, delete
+  `def trace()` from `bolt.bend`: `trace` (L005) was removed, and the
+  setting is now an unknown-setting finding (C011). A repo that still keeps
+  SPEC.md is then checked against it by nothing; moving it to law files is
+  its own PR (bend-spec's spec-first-feature, `references/adopting.md`).
 
 ## 5. READMEs (a plain Bend user)
 
@@ -375,8 +381,8 @@ README isn't part of the hash):
 Re-run `fleet_graph.py`. Every dep is at the latest tag with `hub=ok`, no
 `publish-as` anywhere, and flake pins are current. Report one table: repo,
 release, hash, hub, README check, flake ez rev. Also list what you could not
-finish and anything upstream you found (missing proved rows, packages whose
-entry doesn't reach a module the README advertises).
+finish and anything upstream you found (missing proved guarantees, packages
+whose entry doesn't reach a module the README advertises).
 
 Look for issues users filed against the bend you moved to
 (`gh issue list -R <org>/<repo> --search <version>` in every repo). For
