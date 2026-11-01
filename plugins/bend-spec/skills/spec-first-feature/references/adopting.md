@@ -18,8 +18,9 @@ The end state, whichever way you get there:
   `proofs/<Name>.bend`. Shared definitions in `laws/defs/<Topic>.bend`,
   shared lemmas in `proofs/lemmas/<Topic>.bend`, each named for what it
   holds and starting with a one-line comment saying what it is.
-- No SPEC.md, no requirement IDs, no tag lines, no status fields, and no
-  trust table.
+- No requirement IDs, no tag lines, no status fields, and no trust table.
+  A migrated project keeps its old table as `docs/SPEC.md`, a record the
+  RFCs' IDs point into; nothing reads it.
 
 ## Migrating from SPEC.md
 
@@ -83,9 +84,11 @@ split_laws.py <pair-dir> <names.json> [--spec SPEC.md] [--group-names g.json] [-
    specific to this project becomes a comment on the code that assumes it,
    in that module's header: `# Trusted, not proved: ...`.
 9. **Remove the IDs.** The converter rewrites an ID it has a name for into
-   the law file's path; replace the ones it reports by hand. Then delete
-   SPEC.md and update AGENTS.md, the README and CI where they mention it,
-   its rows, or `trace`.
+   the law file's path; replace the ones it reports by hand. Then move
+   SPEC.md to `docs/SPEC.md` (its links into `docs/` lose that prefix),
+   point the root LAWS.bend header at it as the table the files replaced,
+   and update AGENTS.md, the README and CI where they mention SPEC.md, its
+   rows, or `trace`.
 10. **Gate, then lint.** `bend PROOF.bend` prints `ALL PROOFS CHECK` as its
     first line, then `bolt` over the whole tree is clean. The converter
     folds lines over 120 wide; a parameter line it cannot fold gets a
