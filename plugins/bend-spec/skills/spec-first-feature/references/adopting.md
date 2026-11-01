@@ -74,9 +74,7 @@ split_laws.py <pair-dir> <names.json> [--spec SPEC.md] [--group-names g.json] [-
    eztoml's read: what the laws cover, the gate, and where the reasoning
    lives (an RFC that names guarantees by their old IDs says so). A row the
    converter marked pending says in its prose what is proved and what is
-   left. Drop the `part of:` lines it writes on a shared law file: the
-   guarantees that rest on it already say so, and nothing tracks reverse
-   imports.
+   left.
 8. **Move the trust rows into the code.** Each trust row, and each
    Trusted requirement row, goes one of three ways. One that holds for every
    Bend project (the checker is sound, the gate runner reads the first line)

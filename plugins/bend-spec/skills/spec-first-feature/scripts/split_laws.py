@@ -29,7 +29,8 @@ Placement:
     says so, with its "Left to prove" entry;
   - a law cited by several rows, or by none, gets its own file, named after
     the law (bare_word_reads_on -> laws/BareWordReadsOn.bend); each row
-    using it says "also rests on:", and the file says "part of:" those rows;
+    using it says "also rests on:" (the file lists no rows: that would be a
+    reverse reference);
   - a row whose laws are split across pairs says "also stated in:" the
     other pairs' law files of the same name;
   - a row with no law gets a laws/<Name>.bend holding only its prose, not
@@ -396,9 +397,8 @@ def main():
         files.setdefault(n, [])
     for f, lns in files.items():
         if f not in prose:
-            cs = sorted({c for ln in lns for c in cited.get(ln, [])})
-            users = [names[c] for c in cs]
-            prose[f] = (wrap('part of: ' + ', '.join('laws/%s.bend' % u for u in users)) if users else [])
+            # no reverse list: each guarantee that rests on it says so ("also rests on")
+            prose[f] = []
 
     # --- law helpers: which law files use each (transitively through helpers)
     item_tok = {id(it): tokens(it.text()) for it in laws_items + proof_items}
