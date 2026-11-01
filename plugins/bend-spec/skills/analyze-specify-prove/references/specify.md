@@ -1,4 +1,4 @@
-# Specify: the RFC, the decisions, and SPEC.md
+# Specify: the RFC, the decisions, and the law files
 
 The worked examples are ez's `docs/rfc/ez-spec.md` and bolt's
 `docs/rfc/bolt-spec.md`. bolt's RFC was written second and says which
@@ -11,10 +11,10 @@ either of them.
 - The RFC's shape
 - Draft Status and REVIEW items
 - The decision list
-- Writing requirements
-- The trust boundary
+- Writing guarantees
+- What is trusted
 - Decided behavior changes
-- SPEC.md
+- The law files
 - Keeping documents in step
 - Asking the linter for changes
 
@@ -29,10 +29,10 @@ as both RFCs have them:
 | :---- | :---- |
 | Draft Status | the state (Draft, Accepted), what the draft was written from (the commit, the inventory), and every REVIEW item |
 | Abstract | the law counts and the one-sentence problem: what the gate passing tells us today, and what it should |
-| Glossary | every term a reader needs: ledger, World, planner, interpreter, closed and quantified law, proof gate, Proved, Trusted, pending |
+| Glossary | every term a reader needs: ledger, World, planner, interpreter, closed and quantified law, proof gate, guarantee, law file, trusted |
 | Background | what the project does; how it proves things today; why that leaves us unsure what is proved |
 | Problem Statement | the two questions every behavior must answer (what is guaranteed; proved or assumed), goals and non-goals |
-| Proposal | two levels and why only two; the proof gate; the World model and how far each command is from it; requirements by group, each table followed by the evidence and the law sketch; retiring closed laws; tagging and traceability; refactoring contract; trust boundary; decided behavior changes; how we will know it worked |
+| Proposal | proved or trusted, and why nothing in between; the proof gate; the World model and how far each command is from it; guarantees by group, each followed by the evidence and the law sketch; retiring closed laws; the law layout; refactoring contract; what is trusted; decided behavior changes; how we will know it worked |
 | Abandoned Ideas | each alternative with its real merits and why we did not take it |
 | Rollout | the phases, and what each leaves true |
 | Risks | proof effort, model divergence, the spec encoding accidents, the headline guarantee needing a behavior change, pressure to reintroduce tests, checker soundness |
@@ -70,7 +70,7 @@ in rendered markdown but greppable and diffable:
 Resolve it in place, keeping the history:
 
 ```
-- [x] <!-- REVIEW (resolved): `owner/repo` allows `.` in both segments, so `vercel/next.js` is GitHub. EZ-RES-3 states the new behavior. -->
+- [x] <!-- REVIEW (resolved): `owner/repo` allows `.` in both segments, so `vercel/next.js` is GitHub. The resolve guarantee (EZ-RES-3) states the new behavior. -->
 ```
 
 When a resolution turns out wrong, say so rather than rewriting it:
@@ -97,99 +97,102 @@ which is efficient and only safe because each item carried its evidence.
 Then fold every answer into the RFC in the same change, and note in Draft
 Status that the items are resolved.
 
-Decide per case which accidents become requirements. The pattern ez's
+Decide per case which accidents become guarantees. The pattern ez's
 decisions followed: a behavior users will rely on and that a refactor could
-silently break becomes a row (refusing to overwrite a ledger, how a
+silently break becomes a guarantee (refusing to overwrite a ledger, how a
 dependency is named); a behavior that was simply wrong and that nobody
-should rely on either way is fixed with an untagged law and a line in the
-inventory (creating `.ez` in the current directory). Some accidents had
-only closed laws as their record (ez's doctor drift report); rather than
-lose the record when the closed laws go, they became rows (EZ-VEN-5).
+should rely on either way is fixed with a law stated in a proof file and a
+line in the inventory (creating `.ez` in the current directory). Some
+accidents had only closed laws as their record (ez's doctor drift report);
+rather than lose the record when the closed laws go, they became
+guarantees (EZ-VEN-5).
 
-## Writing requirements
+## Writing guarantees
 
 spec-first-feature step 2 has the wording rules. What is different at
 audit scale:
 
-- **Group by area with a short prefix** (EZ-HASH, EZ-LED, BOLT-RULE,
-  BOLT-CFG). IDs are never reused, even for retired rows; bolt keeps L004
-  reserved after retiring `quantify`.
-- **Write each row from the verdict, not the README.** Where the verdict
-  was partly or fails, the row states the decided behavior and the RFC
-  says the row depends on a behavior change.
-- **Choose one headline guarantee** and say so in the RFC. It is the row
+- **Group by area with a shared name prefix** (bolt's `Cli`, `Config`,
+  `Lsp`, `Output`; the rule guarantees as `<Slug>Reports<What>`). The file
+  name is the guarantee's identity, so the RFC cites it by that name.
+- **Write each guarantee from the verdict, not the README.** Where the
+  verdict was partly or fails, the prose states the decided behavior and
+  the RFC says the guarantee depends on a behavior change.
+- **Choose one headline guarantee** and say so in the RFC. It is the one
   whose failure would make the tool pointless (ez: the lock is reproducible
   from committed inputs). Its law is usually a frame property, and stating
   it forces you to define exactly what the command may read: ez's `inputs`
   projection became part of the specification.
-- **Contractual versus incidental output.** Requirements talk about exit
+- **Contractual versus incidental output.** Guarantees talk about exit
   statuses, bytes of written files, and plans; never about message wording.
   ez dropped a draft requirement for an error-message prefix the code did
   not implement, and its RFC says planners return structured outcomes that
   a renderer turns into text, so rewording touches no law.
-- **For a linter, one row per rule**, worded from the header: "`nat`
+- **For a linter, one guarantee per rule**, worded from the header: "`nat`
   reports exactly one finding for each token the lexer reads as a Nat
   literal of 1000 or more, and none for any other token." Add cross-rule
-  rows where they matter (BOLT-RULE-EXEMPT: an exempt path gets no
-  findings; BOLT-RULE-INERT: comment and string contents do not change a
-  code rule's findings).
+  guarantees where they matter (bolt's `ExemptPathsYieldNoFindings`:
+  an exempt path gets no findings; `CodeRulesIgnoreCommentsAndStrings`:
+  comment and string contents do not change a code rule's findings).
 - **A property that spans releases cannot be a law,** since a law sees one
-  version. Split it: bolt's "codes are stable" became BOLT-OUT-1 (slug to
-  code is one-to-one, Proved) and BOLT-OUT-6 (a released code is never
-  renumbered, Trusted, enforced by review).
+  version. Split it: bolt's "codes are stable" became
+  `OutputCodesMapOneToOne` (slug to code is one-to-one, proved) and a
+  comment on `src/codes.bend` that a released code is never renumbered,
+  which review keeps.
 
-## The trust boundary
+## What is trusted
 
-A table headed exactly `| ID | Assumption | Why it is trusted |`, listing
-every Trusted row once. Common rows, all of which ez or bolt has:
+What the gate cannot check gets no law and no file. Each assumption goes
+one of three ways:
 
-- the Bend checker is sound (EZ-TRUST-1);
-- the interpreter reads the World and executes plans faithfully
-  (EZ-TRUST-2), one row per interpreter, each added in the PR that
-  introduces it (bolt's REVIEW-14);
-- the proof-gate runner reads the first line correctly (EZ-TRUST-4);
-- each other program's answers (git's refs, nix's hash, the publisher's
-  hash);
-- each pinned dependency's proved guarantees, with the dependency and pin
-  as the reason (EZ-TRUST-5, EZ-HASH-6);
-- a repository setting the gate relies on (bolt's branch protection,
-  which did not exist when the audit checked, BOLT-TRUST-7).
+- one that holds for every Bend project is not written down: the Bend
+  checker is sound, the proof-gate runner reads the first line correctly;
+- one that rests on a pinned dependency is a citation of that dependency's
+  law file in the prose of the guarantee that uses it
+  (`eztoml's laws/GetFindsFirstPair.bend`);
+- one specific to this project is a comment on the code that assumes it,
+  in that module's header: `# Trusted, not proved: ...`. The usual ones:
+  each interpreter reads the World and executes plans faithfully (said in
+  the PR that introduces the interpreter); each other program's answers
+  (git's refs, nix's hash, the publisher's hash); foreign code, such as
+  bolt's directory walk in `src/walk/disk.bend`.
 
-Narrow a trusted row whenever the project can check the answer itself. ez
-checks every hub body against its hash, so "the hub serves what was
-published" reduced to availability. Every Trusted row is a place the gate
+A repository setting the gate relies on (bolt's branch protection, which
+did not exist when the audit checked) has no code to sit on, so bolt's
+AGENTS.md says it.
+
+Narrow a trusted assumption whenever the project can check the answer
+itself. ez checks every hub body against its hash, so "the hub serves what
+was published" reduced to availability. Every one is a place the gate
 stops looking, so the PR that adds one must justify it.
 
 ## Decided behavior changes
 
 A section of the RFC listing every change the decisions imply, grouped by
-the requirement that needs it. Each lands as its own PR, separate from the
+the guarantee that needs it. Each lands as its own PR, separate from the
 rollout phases, and its PR description lists the change and how it was
-checked against master's binary. A row that depends on a change stays
-pending until the change lands. Later design docs add to this section
+checked against master's binary. A guarantee that depends on a change
+stays partly proved until the change lands. Later design docs add to this section
 rather than keeping their own list (ez's lock-planner design added five).
 
-## SPEC.md
+## The law files
 
-SPEC.md at the repo root is the single requirement list. Use bolt's format
-exactly, since bolt's `trace` rule reads it:
+`laws/` is the single list of guarantees, in the layout bolt and eztoml
+use (spec-first-feature's SKILL.md and `references/adopting.md`):
 
-- requirement tables headed `| ID | Requirement | Level | Status | Law |`;
-- Level `Proved` or `Trusted`; Status `proved` or `pending` for Proved,
-  empty for Trusted;
-- the Law cell as `<path> <law>` entries relative to SPEC.md, joined by
-  `; ` (ez#64 fixed cells written as one path and a comma list, which
-  `trace` misreads);
-- a pending row may name tagged laws that prove part of it, and a "Left to
-  prove" section says, per such row, what is proved and what is missing;
-- a Format or Tagging section stating all of this in prose, plus which
-  bolt rules enforce it and at what level;
-- the trust boundary table at the end.
+- LAWS.bend and PROOF.bend at the package root hold only imports, one pair
+  per repo;
+- each guarantee is `laws/<Name>.bend`, its prose on top and its quantified
+  laws under it, proved by `proofs/<Name>.bend`;
+- a guarantee proved only in part says in its prose what is proved and what
+  is missing;
+- shared definitions go in `laws/defs/`, shared lemmas in `proofs/lemmas/`;
+- the root LAWS.bend header says what the laws cover, the gate, and where
+  the reasoning lives.
 
-Land SPEC.md in the first rollout phase, from the RFC's tables, with the
-laws that already prove a row tagged. The RFC keeps the reasoning; SPEC.md
-keeps the list. spec-first-feature's `scripts/spec_rows.py` lists rows,
-pending rows and next free IDs, which helps when checking a large SPEC.md.
+Land the law files in the first rollout phase, from the RFC, with the laws
+that already prove a guarantee moved into its file. The RFC keeps the
+reasoning; `laws/` keeps the list.
 
 ## Keeping documents in step
 
@@ -198,9 +201,9 @@ all three:
 
 | Document | Changes when |
 | :---- | :---- |
-| RFC | a decision is made or reversed; a row is added or reworded; the rollout plan changes |
-| SPEC.md | a row is added, reworded or flipped; a Law cell changes; the trust boundary moves |
-| inventory | a law is added, deleted or retagged; a finding is fixed; a work package changes state |
+| RFC | a decision is made or reversed; a guarantee is added or reworded; the rollout plan changes |
+| law files | a guarantee is added, reworded or proved further; a trusted assumption is added or removed |
+| inventory | a law is added, deleted or moved; a finding is fixed; a work package changes state |
 
 Fold decisions in as they are made, including ones made in a design doc
 or in a PR discussion. The maintainer should never have to ask whether a
@@ -210,8 +213,8 @@ of the rollout, fold what still matters into the RFC and delete it.
 ## Asking the linter for changes
 
 When bolt's rules do not fit the spec, change bolt, not the spec. ez asked
-for an opt-in strict closed-law rule (bolt v0.9.0's `quantify`), for the
-`trace` rule (bolt#44), and for tagged partial laws on pending rows
-(bolt#106, after ez's SPEC.md needed them for EZ-VEN-1 and EZ-LED-6 to 8).
+for an opt-in strict closed-law rule (bolt v0.9.0's `quantify`), and the
+move to one law file per guarantee needed bolt to find law and proof files
+by following imports (bolt#257, which also removed `trace`).
 File an issue or a PR in bolt with the concrete case, pin the bolt commit
 that has the change, and re-pin to the release tag when it ships.

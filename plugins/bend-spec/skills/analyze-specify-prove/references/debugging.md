@@ -108,19 +108,19 @@ where bugs hide.
 | `ez add` named two dependencies whose entry is `main.bend` both `main` | adding two real packages | EZ-LED-7, naming like cargo with `--rename` |
 | `ez add ../x` fetched from inside a work directory | a relative path from a subdirectory | EZ-LED-8, resolved against the project root |
 | `ez init` overwrote an existing ledger; `ez remove` with no ledger created one | running each command twice and in an empty directory | EZ-LED-6, refusals that write nothing |
-| every command, `ez help` included, created `.ez` and `bin` | `ls` after `ez help` in an empty directory | untagged fix, noted in the inventory |
-| `ez doctor` failed a project with no dependencies | running it on `ez init`'s output | untagged fix |
+| every command, `ez help` included, created `.ez` and `bin` | `ls` after `ez help` in an empty directory | fix with no guarantee, noted in the inventory |
+| `ez doctor` failed a project with no dependencies | running it on `ez init`'s output | fix with no guarantee |
 | an upgrade decision function was always called with its agreement bit fixed to true, so its drift arm was dead | reading the call sites while tracing | the planner calls it with the real bit (EZ-RES-8) |
 | walks stopped silently when fuel ran out | reading the walks while tracing | the planner refuses instead |
 | a committed ledger would have held an absolute path | reviewing an agent's diff | sent back before push |
 | bolt's `bolt check` said `clean`, exit 0, with no bend on PATH | running it with no bend available | decided change: a spawn failure is an error |
 | bolt's `shadow` rule guarded against a failure bend 2.0.25 no longer has | trying the pattern in the pinned bend | the rule retired, its code reserved |
-| bolt's rules each had a false positive or negative against their header | a scratch project per rule | per-rule fixes, each proving the rule's row |
-| bolt's `main` had no branch protection, so the gate bound nothing | the GitHub API | a Trusted row that holds once a maintainer adds the ruleset |
+| bolt's rules each had a false positive or negative against their header | a scratch project per rule | per-rule fixes, each proving the rule's guarantee |
+| bolt's `main` had no branch protection, so the gate bound nothing | the GitHub API | a trusted assumption that holds once a maintainer adds the ruleset |
 | shake checked an option's value against the choices of a parent's argument of the same name | stating PARSE-5's law over the current command's arguments | fix first, then the law |
 | shake's short cluster revived a failed walker: `greet -vvn Ada` succeeded although the second `-v` was refused | stating PARSE-10's law per letter | fix (`cluster.apply.mode` keeps a failure), then `cluster_dead` |
-| shake's PARSE-1 row said every binding is a piece of a word or a default; a flag binds `true`, which is neither | writing the law's predicate | the row reworded, in the same PR as the law |
-| a compiled Bend program's runtime takes the first `--`, `--help`, `--threads` and `--gpu` before `main` runs, so `tool add -- -5 3` never reaches shake as written | running the demo binary with each | a Trusted row (SHAKE-TRUST-2) and the README's `-- --` note; any Bend CLI needs both |
+| shake's PARSE-1 requirement said every binding is a piece of a word or a default; a flag binds `true`, which is neither | writing the law's predicate | the requirement reworded, in the same PR as the law |
+| a compiled Bend program's runtime takes the first `--`, `--help`, `--threads` and `--gpu` before `main` runs, so `tool add -- -5 3` never reaches shake as written | running the demo binary with each | a trusted assumption (SHAKE-TRUST-2) and the README's `-- --` note; any Bend CLI needs both |
 | shake's planted truncation bug (drop the seventh char of every value) passed every closed law | planting it | caught once the value laws landed; see "the new law catches this bug" above |
 
 ## Turning a manual check into CI
