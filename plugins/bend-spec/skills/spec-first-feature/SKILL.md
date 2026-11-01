@@ -68,16 +68,21 @@ Which of these it is decides what you are allowed to edit:
 | New behavior | A new law file, or new laws in the file of the guarantee it extends |
 | Change to a guaranteed behavior | The file's prose and its laws, together. This is a behavior change, so say so in the PR |
 | Bug where code breaks a guarantee | Nothing. The guarantee was only partly proved, or the bug is in code that is trusted, not proved. Find out which |
-| Bug where the guarantee was missing or wrong | A new or reworded law file with a law that would have caught the bug |
-| Bug in internal behavior, not interface | A law file holding the fixed behavior in place; its prose says it is internal, not interface |
+| Bug where the guarantee was missing or wrong | A new or reworded law file stating the class of bugs this one belongs to, not this case alone |
+| Bug in internal behavior, not interface | A law file for the class of behavior the bug broke; its prose says it is internal, not interface |
 | Refactor | Nothing. Proof files and lemmas may be rewritten |
 
 Law files are written by agents, never by the user, but each one is a
 claim the user owns: behavior that must not change without review. That
 covers the interface a library guarantees and internal behavior alike; the
 prose says which it is. Ask the user before changing what an existing law
-file says, and never edit one to make a proof pass. If the proof won't go
-through, the code or the plan is wrong, not the claim. Deleting a law,
+file says. Don't edit a law to make its proof pass: when a proof won't go
+through, the code or the plan is usually wrong, not the claim. There are
+exceptions. A law still being written in this change is a draft, and it
+can move while you find out what it should say. An existing law can also
+be wrong for a good reason: it overstated what the code can keep, or it
+pinned an accident. Change it then, say why in the PR, and have it
+reviewed. Deleting a law,
 narrowing a file's prose, or moving a claim from a law to a trusted
 comment weakens a guarantee, so it is also a behavior change that needs
 review.
@@ -91,6 +96,14 @@ promising callers anything. A law stated in a proof file is scaffolding
 for a proof: the gate checks it, but it holds nothing in place, so never
 put behavior there to keep it out of `laws/`. Message wording and other
 output nobody should rely on gets no law at all.
+
+Not every bug gets a law of its own. The pull is to write a law and proof
+that only pin the fix for that one bug, the input that failed, instead of
+the class of bugs it belongs to. Find the property the bug broke and state
+it for every input. Often an existing guarantee was only partly proved and
+the class belongs in its file; otherwise write the law for the class. A
+law that only says "this input no longer fails" adds a file and holds
+almost nothing in place.
 
 ## 2. Write the guarantee's prose first
 
