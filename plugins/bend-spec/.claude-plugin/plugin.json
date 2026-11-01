@@ -1,7 +1,7 @@
 {
   "name": "bend-spec",
-  "version": "0.7.0",
-  "description": "Spec-first work for Bend projects traced by bolt (ez, bolt, eztoml, ezhttp, ezjson, snap, shake): finding hub packages before building, bringing a project under spec, adding features to one that is, and making one faster under proof.",
+  "version": "0.8.0",
+  "description": "Spec-first work for Bend projects that keep their guarantees as law files (ez, bolt, eztoml, ezhttp, ezjson, snap, shake): finding hub packages before building, bringing a project under spec, adding features to one that is, and making one faster under proof.",
   "author": {
     "name": "Emerging Patterns"
   }
