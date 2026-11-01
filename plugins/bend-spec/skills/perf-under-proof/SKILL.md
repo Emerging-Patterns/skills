@@ -1,13 +1,13 @@
 ---
 name: perf-under-proof
-description: Make a Bend project that keeps SPEC.md, LAWS.bend and PROOF.bend faster without weakening one guarantee. Profile, find the shape that costs the time, rewrite it and keep every law proven, one measured change at a time, with tracking kept off main. Use this whenever the job is speed in a proven Bend repo (ez, bolt, eztoml, ezhttp, ezjson, snap, shake), for requests like "bolt has become slow", "auto research lint performance", "why does ez take a minute on this repo", "profile the checker", "this rule is quadratic" or "make the planner faster", including when the user names an autoresearch-style loop plugin. For new behavior use spec-first-feature; for a project whose laws are not trustworthy yet use analyze-specify-prove first.
+description: Make a Bend project that keeps its guarantees as law files under LAWS.bend and PROOF.bend faster without weakening one guarantee. Profile, find the shape that costs the time, rewrite it and keep every law proven, one measured change at a time, with tracking kept off main. Use this whenever the job is speed in a proven Bend repo (ez, bolt, eztoml, ezhttp, ezjson, snap, shake), for requests like "bolt has become slow", "auto research lint performance", "why does ez take a minute on this repo", "profile the checker", "this rule is quadratic" or "make the planner faster", including when the user names an autoresearch-style loop plugin. For new behavior use spec-first-feature; for a project whose laws are not trustworthy yet use analyze-specify-prove first.
 ---
 
 # Performance under proof
 
 A proven Bend project can be made fast without trusting anything new. The
-laws don't mention speed, but they pin the code closely. A tagged law's
-statement is human-owned (spec-first-feature, step 1), and the proofs unfold
+laws don't mention speed, but they pin the code closely. A law file's
+statement is the user's (spec-first-feature, step 1), and the proofs unfold
 the very defs you want to replace. So the work is always the same:
 
 1. find the def that costs the time;
@@ -18,7 +18,7 @@ the very defs you want to replace. So the work is always the same:
    findings didn't change.
 
 bolt's lint went from 208 s to 20 s over its own tree this way, in seven
-kept changes. No LAWS.bend was edited, and the findings stayed
+kept changes. No law was edited, and the findings stayed
 byte-identical. The history is on bolt's `autoresearch/bolt-lint-perf`
 branch (`autoresearch/loop-260924-2130/summary.md`), and the fixes are
 bolt#201. Every technique below comes from that run.
@@ -27,10 +27,10 @@ bolt#201. Every technique below comes from that run.
 
 Read the repo's AGENTS.md (the gate, the Bend gotchas) and the
 spec-first-feature skill's vocabulary. A perf change is a **refactor** in
-spec-first-feature's table: nothing in SPEC.md changes, no tagged law
-statement changes, proofs may be rewritten. If the only fast version you can
-find needs a law restated, stop and put it to the user (step 6). Don't
-edit LAWS.bend yourself.
+spec-first-feature's table: nothing under `laws/` changes, no law
+statement changes, proof files and lemmas may be rewritten. If the only fast
+version you can find needs a law restated, stop and put it to the user
+(step 6). Don't edit a law file yourself.
 
 ## 1. Branches: tracking off main
 
@@ -64,7 +64,7 @@ directory (minus the tracking directory, or the linter lints your bench too),
 build with bare `bend <entry> -o`, time one run, and print the number. Build
 natively: the JS lane is not what users run, and it overflows on long input.
 
-**Guard.** Every PROOF.bend prints `All terms check.`, **and** the output
+**Guard.** `bend PROOF.bend` prints `ALL PROOFS CHECK`, **and** the output
 equals the baseline's. For a linter, compare the findings with `path:line:col`
 normalized to `path:`, so code moving down a file isn't a regression. But
 compare everything else, the summary line included. The guard also catches
@@ -153,13 +153,13 @@ right on any other input. Four ways to get there, from cheapest:
   intermediate with the helper lemmas). Only the top-level proofs that unfold
   the entry point need one rewrite each. Dotted names keep the old defs out of
   bolt's coverage rule.
-- **Restate the PROOF-local lemmas.** Lemmas in PROOF.bend (not LAWS.bend)
-  are yours. When `Bool.pick(St, b, x, y)` becomes `Lazy.either(St, b, _u =>
+- **Restate the proof-local lemmas.** Lemmas in proof files and
+  `proofs/lemmas/` (not law files) are yours. When `Bool.pick(St, b, x, y)` becomes `Lazy.either(St, b, _u =>
   x, _v => y)`, change the lemma statements that mention it; their proofs
   are the same `match b`.
 
 Before changing a def, list who unfolds it:
-`grep -n "Mod\.name\b" */PROOF.bend */*/PROOF.bend */LAWS.bend`. A def only
+`grep -rn "Mod\.name\b" laws proofs`. A def only
 IO or lookups use, with no law naming it (bolt's `annotate`, `items`),
 needs no proof, but the guard still has to show the output is unchanged.
 
@@ -184,5 +184,5 @@ the user: which law, what it would say instead, and what it would buy.
 - Shapes that generalize become rule proposals (issues on bolt): the shape,
   a real instance with its measured cost, why the current rules miss it, and
   a proposed trigger that keeps idiomatic code quiet.
-- The PR says what each commit bought, that no law statement or SPEC.md row
-  changed, and what the laws block.
+- The PR says what each commit bought, that no law file changed, and what
+  the laws block.
