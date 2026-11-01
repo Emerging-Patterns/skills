@@ -145,12 +145,11 @@ in, the law files. Format and style details are in `references/specify.md`.
   the evidence, the options and your pick. Base contested choices on
   established tools: ez's dependency naming follows cargo (package name
   first, `--rename` to override) instead of an invented rule.
-- **Separate accidents from guarantees, per case.** Some bugs become
-  guarantees (ez's refusals and naming, EZ-LED-6 to 8); others are fixed
-  with laws stated in proof files and a note in the inventory (directory
-  creation, `doctor` on an empty project). A law file is a promise to keep
-  the behavior forever, so padding `laws/` with incidental guarantees hides
-  the real ones.
+- **Separate interface from internal behavior, per case.** Some fixes
+  become interface guarantees (ez's refusals and naming, EZ-LED-6 to 8);
+  others hold internal behavior in place (directory creation, `doctor` on
+  an empty project). Both get law files, since neither should change
+  without review; the prose of an internal one says it is not interface.
 - **Collect decided behavior changes in their own RFC section.** Each lands
   as its own PR, separate from the rollout, and a guarantee that depends
   on one stays partly proved until it lands.
