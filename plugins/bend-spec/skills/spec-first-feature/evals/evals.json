@@ -4,19 +4,19 @@
     {
       "id": 1,
       "prompt": "add `ez lock --check` to ez: it should fail with exit 1 if running ez lock would change ez.lock.toml, and write nothing either way. CI wants it.",
-      "expected_output": "A new EZ-DOC (or EZ-OUT) row, Proved/pending, worded for every world; the check designed as the lock planner's plan compared to the current lock with no Write effect; a quantified law tying --check's exit to 'lock plan's text differs from the committed lock' plus a frame law 'the --check plan has no Write/Lay/Remove'; no closed laws, no tests/; row flipped to proved with the Law cell filled, or left pending with a stated plan; gate + bolt trace run; PR summary lists row, laws, trust-boundary delta.",
+      "expected_output": "A new law file under laws/ (e.g. laws/LockCheckFailsOnChange.bend) whose prose is worded for every world, imported from LAWS.bend; the check designed as the lock planner's plan compared to the current lock with no Write effect; a quantified law tying --check's exit to 'lock plan's text differs from the committed lock' plus a frame law 'the --check plan has no Write/Lay/Remove'; proofs/<same name>.bend imported from PROOF.bend, watched failing first; no closed laws, no tests/, no SPEC.md row, ID tag or status; anything left unproved said in the law file's prose; `bend PROOF.bend` prints ALL PROOFS CHECK and whole-tree bolt is clean; PR summary lists law files, laws, and any trusted assumption added.",
       "files": []
     },
     {
       "id": 2,
       "prompt": "new bolt rule: flag a law in LAWS.bend whose proof in PROOF.bend is just {==} even though the law has for-binders the statement never looks at. vacuous laws keep sneaking in.",
-      "expected_output": "Header comment written first as the spec; BOLT-RULE row with next code in the right group appended to bolt/codes.bend (no renumbering); opt-in by default; frame law (no finding without the pattern) and completeness law (count equality) tagged with the ID; false-positive run over ez, eztoml, ezhttp, ezjson, snap, shake and bolt reported before any default above warn; notes it is a project rule (reads LAWS+PROOF pair) so CLI-only.",
+      "expected_output": "Header comment written first as the spec; a law file laws/<Slug>Reports<What>.bend with prose quoting the header, imported from LAWS.bend; next code in the right group appended to src/codes.bend (no renumbering); opt-in by default; frame law (no finding without the pattern) and completeness law (count equality) in that file, proved in proofs/<same name>.bend; false-positive run over ez, eztoml, ezhttp, ezjson, snap, shake and bolt reported before any default above warn; notes it is a project rule (reads the LAWS+PROOF pair, which bolt finds by following imports) so CLI-only.",
       "files": []
     },
     {
       "id": 3,
       "prompt": "ez add ../eztoml from inside ez/ fetches from the wrong directory. fix it",
-      "expected_output": "Reads SPEC.md and finds the decided row (EZ-LED-8: a relative path is kept as typed) instead of inventing a new one; puts the decision in a pure planner/helper over explicit inputs (cwd, target) rather than inside IO; a tagged quantified law over every relative target and cwd; watches the proof fail first; leaves existing tagged law statements alone; runs ez prove, the non-nix readme gate if the build is touched, and bolt at ez's pinned version (quantify, not trace).",
+      "expected_output": "Finds the decided guarantee (EZ-LED-8 in ez's SPEC.md, or the law file that took it over: a relative path is kept as typed) instead of inventing a new one; puts the decision in a pure planner/helper over explicit inputs (cwd, target) rather than inside IO; a quantified law over every relative target and cwd in that guarantee's law file; watches `bend PROOF.bend` fail first; asks before changing what an existing law file says; runs ez prove, the non-nix readme gate if the build is touched, and bolt at ez's pinned version.",
       "files": []
     }
   ]

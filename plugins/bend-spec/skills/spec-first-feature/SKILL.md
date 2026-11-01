@@ -1,18 +1,21 @@
 ---
 name: spec-first-feature
-description: Add or change behavior in a Bend project that keeps a SPEC.md traced by bolt (ez, bolt, and siblings such as eztoml, ezhttp, ezjson, snap, shake) the spec-first way. The SPEC.md requirement row comes first, then a quantified law in LAWS.bend, the proof in PROOF.bend, the tag and status flip, and a clean proof gate plus bolt `trace` run. Use this whenever the task is a new command, flag, lint rule, library function or guarantee, a change to what an existing one does, or a fix for a bug where the program decided the wrong thing, in any repo with SPEC.md and LAWS.bend/PROOF.bend files. Use it even when the user only says "add X to ez", "new bolt rule for Y" or "fix ez add fetching a relative path from the wrong directory", without mentioning specs or laws.
+description: Add or change behavior in a Bend project that keeps its guarantees as law files under bolt (ez, bolt, and siblings such as eztoml, ezhttp, ezjson, snap, shake) the spec-first way. The guarantee's law file comes first (its prose and its quantified laws, imported from LAWS.bend), then its proof file imported from PROOF.bend, a `bend PROOF.bend` run that fails, the proof, and a clean bolt run. Use this whenever the task is a new command, flag, lint rule, library function or guarantee, a change to what an existing one does, or a fix for a bug where the program decided the wrong thing, in any repo with LAWS.bend/PROOF.bend files. Use it even when the user only says "add X to ez", "new bolt rule for Y" or "fix ez add fetching a relative path from the wrong directory", without mentioning specs or laws.
 ---
 
 # Spec-first features in ez + bolt projects
 
-In these projects a behavior is guaranteed only if SPEC.md names it and a
-quantified law proves it (or the trust boundary names it). bolt's `trace`
-rule (L005, BOLT-LAW-5) checks mechanically that the SPEC.md rows and the law
-tags agree, and `closed` (L002) rejects laws with no binder (`quantify`,
-L004, in bolt v0.9.0 and older pins). Together they
-make "is this feature trustworthy?" a question the gate answers. So new work
-is done in an order that lets the gate answer it: requirement, then law, then
-code.
+In these projects a behavior is guaranteed only if a law file states it and
+`bend PROOF.bend` proves it. Each guarantee is one file, `laws/<Name>.bend`:
+its prose as the opening comment, then its quantified laws. The file of the
+same name under `proofs/` fills them. `LAWS.bend` and `PROOF.bend` at the
+package root hold nothing but the imports of those files. The file name is
+the guarantee's identity; there are no requirement IDs and no status
+fields. Proved means `bend PROOF.bend` prints `ALL PROOFS CHECK` as its
+first line, and bolt's `closed` (L002) rejects a law with no binder.
+Together they make "is this feature trustworthy?" a question the gate
+answers. So new work is done in an order that lets the gate answer it:
+guarantee, then law, then code.
 
 The consolidation that set this up (the spec audits of ez and bolt) is why
 the rules below exist. It deleted hundreds of closed laws that looked like
@@ -26,87 +29,102 @@ Read these before you plan anything. When they disagree with this skill,
 follow them, because they change faster than this skill does:
 
 - `AGENTS.md` / `CLAUDE.md`: the hard rules, the gate commands, the Bend
-  gotchas.
-- `SPEC.md`: the Format/Tagging section (the exact table headers, ID
-  pattern, tag placement), the group your change belongs in, and the trust
-  boundary.
+  gotchas, and the Conventions section on the law layout (bolt's is the
+  model).
+- The root `LAWS.bend` header (what the laws cover, which shared
+  definitions they use) and the `laws/` listing: find the guarantee your
+  change belongs to before writing a new one.
 - The bolt the project pins (`[tools.bolt]` in ez.toml, or the flake
   input), not bolt's main. The rule names and codes this skill mentions are
-  current bolt's. ez, for example, pins a bolt with strict `closed` and
-  `trace` (both at error since ez#69); a project still on v0.9.0 has
-  `quantify` (L004) instead and no `trace`.
-- `bolt.bend` at the root: is `trace` on, and at what level? Are `closed` (or
-  `quantify`) and `coverage` errors? If `trace` is off or at warn, the project hasn't reached
-  the consolidation finish line. Do the work the same way anyway, but tell
-  the user the gate won't catch a mismatch.
+  current bolt's. bolt decides which files are law files and which are
+  proof files by following imports from LAWS.bend and PROOF.bend, never by
+  path: a file LAWS.bend reaches is a law file, a file only PROOF.bend
+  reaches is a proof file, and whatever main.bend reaches is code, even
+  when a law imports it.
+- `bolt.bend` at the root: are `closed` and `coverage` errors? A
+  `def trace()` there is left from the SPEC.md layout; on a bolt with #257
+  it is an unknown-setting finding (C011), so delete it.
 - `docs/rfc/*-spec.md`: the World/planner design and the decided behavior
-  changes, if your change touches a command.
+  changes, if your change touches a command. Older RFCs name guarantees by
+  the requirement IDs they had before `laws/`.
 
 Then read the reference file for the repo you're in:
 
 - ez, or any tool that does IO through a World/planner split:
   `references/ez.md`
 - bolt, and especially a new lint rule: `references/bolt.md`
-- a sibling library with no SPEC.md yet: `references/adopting.md`
-- a project (or a large area of one) whose spec, laws and behavior
-  disagree, where the job is the audit and the rollout rather than one
-  feature: the `analyze-specify-prove` skill in this plugin
-
-`scripts/spec_rows.py SPEC.md` lists the rows by group, the pending ones, and
-the next free ID for a prefix. Use it to pick IDs and to check your row
-parses as the tables expect.
+- a project that still keeps SPEC.md and mega LAWS.bend/PROOF.bend files,
+  or has no laws yet: `references/adopting.md`
+- a project (or a large area of one) whose laws and behavior disagree,
+  where the job is the audit and the rollout rather than one feature: the
+  `analyze-specify-prove` skill in this plugin
 
 ## 1. Classify the change
 
 Which of these it is decides what you are allowed to edit:
 
-| Kind | What changes in SPEC.md | What may change in LAWS.bend |
-| :-- | :-- | :-- |
-| New behavior | New row(s) | New tagged laws |
-| Change to a guaranteed behavior | The row's wording. This is a behavior change, so say so in the PR | The tagged law's statement, to match the new row |
-| Bug where code breaks a Proved row | Nothing | Nothing. The law was pending, or the bug is in trusted code. Find out which |
-| Bug where the requirement was missing or wrong | New or reworded row | New tagged law that would have caught the bug |
-| Accidental behavior not worth guaranteeing | Nothing. Note it in the law inventory (`docs/rfc/*-law-inventory.md`) | Fix it, with an untagged quantified law |
-| Refactor | Nothing | Nothing tagged. Proofs may be rewritten, untagged laws may change |
+| Kind | What changes under laws/ |
+| :-- | :-- |
+| New behavior | A new law file, or new laws in the file of the guarantee it extends |
+| Change to a guaranteed behavior | The file's prose and its laws, together. This is a behavior change, so say so in the PR |
+| Bug where code breaks a guarantee | Nothing. The guarantee was only partly proved, or the bug is in code that is trusted, not proved. Find out which |
+| Bug where the guarantee was missing or wrong | A new or reworded law file with a law that would have caught the bug |
+| Accidental behavior not worth guaranteeing | Nothing. Fix it, with a quantified law stated in a proof file, and note it in the law inventory (`docs/rfc/*-law-inventory.md`) if the project keeps one |
+| Refactor | Nothing. Proof files and lemmas may be rewritten |
 
-The refactoring contract behind this: a tagged law's statement in LAWS.bend
-is human-owned. It changes only when its SPEC.md row changes. Never edit one
-to make a proof pass. If the proof won't go through, the code or the plan is
-wrong, not the claim. Moving a row from Proved to Trusted weakens a
-guarantee, so it is also a behavior change that needs review.
+Law files are written by agents, never by the user, but each one is a
+guarantee the user owns. Ask the user before changing what an existing law
+file says, and never edit one to make a proof pass. If the proof won't go
+through, the code or the plan is wrong, not the claim. Deleting a law,
+narrowing a file's prose, or moving a claim from a law to a trusted
+comment weakens a guarantee, so it is also a behavior change that needs
+review.
 
-Not every bug earns a row. A row is a promise to keep the behavior forever.
-If the old behavior was an accident and nobody should rely on the new one
-either, fix it without a row: ez did this for `.ez`/`bin` being created in
-the current directory, and for `ez doctor` on a project with no deps. Ask
-the user when it isn't clear which kind a bug is. Padding SPEC.md with
-incidental rows makes the real guarantees harder to find.
+Not every bug earns a law file. A law file is a promise to keep the
+behavior forever. If the old behavior was an accident and nobody should
+rely on the new one either, fix it without one: ez did this for `.ez`/`bin`
+being created in the current directory, and for `ez doctor` on a project
+with no deps. A law stated in a proof file is checked by the gate, but
+LAWS.bend doesn't reach it, so it promises nothing. Ask the user when it
+isn't clear which kind a bug is. Padding `laws/` with incidental
+guarantees makes the real ones harder to find.
 
-## 2. Write the requirement row first
+## 2. Write the guarantee's prose first
 
-Add the row before any code, with status `pending`, and show it to the user
-if the wording involves a choice. The row is the design review. It is much
-cheaper to argue about one sentence than about a diff.
+Create `laws/<Name>.bend` before any code, starting with the prose, and
+show it to the user if the wording involves a choice. The prose is the
+design review. It is much cheaper to argue about one sentence than about a
+diff.
 
-- **ID.** Next free number in the group (`spec_rows.py --next EZ-RES`). IDs
-  are never reused, even for retired rows. A new area gets a new group
-  prefix in the same style.
-- **Level.** `Proved` unless the claim is genuinely about something outside
-  the gate: another program's output (git, nix, bend, the hub), foreign
-  C/JS code, a property across releases, or evaluation order. A Trusted row
-  goes in both the requirement table and the trust table, with a real "why",
-  and the PR description has to justify the trust boundary growing. Every
-  Trusted row is a place where the gate stops looking, so they should be
-  rare and narrow.
+- **Name.** CamelCase, describing the behavior: `GetFindsFirstPair`,
+  `SpaceReportsBlanksAndWidth`. The name is the identity, so pick one that
+  still fits when the laws grow.
 - **Wording.** State it for every input, precisely enough that a law can be
-  written from the sentence alone. Use "exactly" when both directions matter
+  written from the prose alone. Use "exactly" when both directions matter
   (every instance is reported, and nothing else is). Say what is left
   unchanged, not just what changes. Name the decision, not the IO: "`ez init`
   on a world that already has a ledger plans no write", not "`ez init` checks
   whether ez.toml exists".
+- **Partly proved.** If the laws will cover only part of it, the prose says
+  which part is proved and what is still missing.
+- **What it rests on.** A law several guarantees rest on gets its own law
+  file, and each guarantee that uses it says `# also rests on:
+  laws/X.bend` in its prose. A dependency's guarantee is cited by its law
+  file (`eztoml's laws/GetFindsFirstPair.bend`). Trust a dependency's proved
+  guarantees and never prove its internals.
 
 Weak: "`ez add` names dependencies sensibly." Strong: "Two dependencies
 added from different sources get different names in the ledger."
+
+Some claims are outside the gate: another program's output (git, nix,
+bend, the hub), foreign C/JS code, a property across releases, evaluation
+order. Those get no law and no file. One that rests on a dependency is a
+citation of the dependency's law file. One that holds for every Bend
+project (the checker's soundness, the gate runner) is not written down at
+all. One specific to this project is a comment on the code that assumes it,
+in that module's header: `# Trusted, not proved: ...`. The PR description
+justifies every new one. Each is a place where the gate stops looking, so
+they should be rare and narrow.
 
 ## 3. Design so the law can reach the decision
 
@@ -124,27 +142,31 @@ consolidation. So before writing code:
   `read.git` bug: a missing manifest silently became an empty file list).
   Make it an explicit input or outcome the planner handles.
 - Don't string-match another program's output when a structured answer
-  exists. If you have to parse it, the format assumption is a Trusted row.
+  exists. If you have to parse it, the format assumption is trusted, and
+  the parsing module's header says so.
 - Don't reimplement an external tool (git plumbing, NAR, bend's parser)
   without a clear reason. Each one is a new place to diverge, and usually
-  a new Trusted row.
+  a new trusted assumption.
 
-## 4. Write the law, watch it fail
+## 4. Write the laws, watch them fail
 
-In the LAWS.bend of the project directory that owns the code:
+Under the prose in `laws/<Name>.bend`:
 
 ```
-# LAW: <one-line plain statement, usually the requirement's own words>
-# EZ-XXX-N
+# <the guarantee, for every input, in plain words>
+import Base
+import ../src/<module>.bend as M
+
+# LAW: <one-line plain statement>
 law <snake_name>:
   for <binders>
   {<statement> : <Type>}
 ```
 
-The tag line `# <ID>` sits alone on its line, inside the unbroken comment
-block directly above `law`. A law can carry several tags, one per line.
-
-Then check that the law actually says something:
+Then add `import ./laws/<Name>.bend as <Name>` to LAWS.bend. Definitions
+several law files use go in `laws/defs/<Topic>.bend`, named for what they
+hold, starting with a one-line comment saying what it is. Check that each
+law actually says something:
 
 - **Every binder is used in a way that matters.** A law whose proof is
   `{==}` over binders the statement never inspects is a closed law in
@@ -156,11 +178,20 @@ Then check that the law actually says something:
   reports nothing on code without the pattern.
 - **Both directions for "exactly".** Prove the count or set equality, not
   just "at least one finding".
-- One requirement may need several laws (EZ-RES-3 has eight). List them all
-  in the Law cell.
+- One guarantee may need several laws (eztoml's `GetFindsFirstPair` has
+  five).
 
-Fill PROOF.bend with a hole or a wrong proof and run the proof gate. Watching
-it fail first confirms the gate sees the law, and that the law isn't
+Then write `proofs/<Name>.bend`, starting `# proofs of laws/<Name>.bend`,
+importing its law file as `Laws` and filling each law
+(`def Laws.<snake_name>(...)`), and add
+`import ./proofs/<Name>.bend as P<Name>` to PROOF.bend. Lemmas several
+proofs use go in `proofs/lemmas/<Topic>.bend`, named and headed the same
+way as defs. Neither kind of shared file gets a list of who uses it, or a
+numbered name. A proof file may state lemma laws of its own: only PROOF.bend
+reaches it, so bolt reads it as a proof file.
+
+Fill the proof with a hole or a wrong term first and run `bend PROOF.bend`.
+Watching it fail confirms the gate sees the law, and that the law isn't
 trivially true.
 
 ## 5. Implement and prove
@@ -168,62 +199,42 @@ trivially true.
 Write the code, then the proof. Follow the repo's Bend gotchas in AGENTS.md.
 Most failed checks are one of those, not a real problem with the law.
 
-If the proof can't land in this change, the row lands `pending` with a
-stated plan: ez's "Left to prove" table, or an issue linked from the PR.
+If the proof can't land in this change, the law file lands with the laws
+that are proved, and its prose says what is left and the plan (or an issue
+linked from the PR). A partly proved guarantee is a normal state, not a
+failure. Its laws are checked; a claim that only lives in an issue is
+protected by nothing.
 
-Pending with partial laws is a normal state, not a failure. When a law
-proves part of a pending row, tag it with the row's ID, list it in the Law
-cell, and say in "Left to prove" what is proved so far and what is missing
-(EZ-VEN-1 is the model). A tagged partial law is checked. An untagged one
-isn't protected by anything.
 What never lands is a feature backed only by examples. That means no closed
-law, no new `# toward` trail (that was migration scaffolding, and ez and
-bolt have deleted all of theirs), and no `tests/*.bend` for a claim Bend can state. Tests belong
-only to the stay list of host/integration checks named in AGENTS.md, and a
-test is never evidence for a row.
+law, no `# toward` trail (that was migration scaffolding, and ez and bolt
+have deleted all of theirs), and no `tests/*.bend` for a claim Bend can
+state. Tests belong only to the stay list of host/integration checks named
+in AGENTS.md, and a test is never evidence for a guarantee.
 
-## 6. Flip the row
-
-When the last law for the row lands, set status `proved` in the same change.
-The Law cell lists every law as a `<path> <law>` entry relative to SPEC.md,
-entries separated by `; ` (`ez/LAWS.bend a; ez/LAWS.bend b`, not
-`ez/LAWS.bend a, b`). If "Left to prove" had a row for it, delete that row.
-
-`trace` checks every Law entry of a Proved row, proved or pending, the same
-way: it reports one whose law is missing, has no binder, or lacks the tag.
-It also reports a proved row with an empty Law cell, a Trusted row with a
-Law cell, and a tag naming a Trusted row or an ID SPEC.md doesn't list. A
-tag on a pending row and a Law cell on a pending row are fine: that is how
-partial laws are traced. This is bolt v1.2.0 and later. An older pinned bolt
-reports both, so a project that tags partial laws needs its bolt pin at
-v1.2.0 or newer to run `trace` at error. If the pin is older, say so to the
-user and propose the bump; don't untag partial laws to get it green.
-
-## 7. Run the gate, read every finding
+## 6. Run the gate, read every finding
 
 From the repo root, inside `nix develop`:
 
-1. The proof gate: `ez prove`, or whatever AGENTS.md names
-   (`ez test --unit-only` in bolt today). Every PROOF.bend must print exactly
-   `All terms check.` as its first line.
-2. bolt over the whole tree (`bolt`, no file arguments, because `trace` only
-   runs on a whole-tree lint). In bolt, lint with the binary this tree just
-   built, not the one on PATH.
+1. The proof gate: `bend PROOF.bend`, or whatever AGENTS.md names
+   (`ez prove`). Its first line must be exactly `ALL PROOFS CHECK`.
+2. bolt over the whole tree (`bolt`, no file arguments, because project
+   rules only run on a whole-tree lint). In bolt, lint with the binary this
+   tree just built, not the one on PATH.
 3. `nix flake check`, which is what CI runs, and any job CI runs without
    nix. The repo's reference file and CI workflow list them.
 
 Fix every finding. Don't lower a level in bolt.bend to get green. That is a
 policy change for the user to decide, not a fix.
 
-## 8. Report
+## 7. Report
 
 In the PR description (or to the user), give:
 
-- the row(s) added or reworded, with ID, level and status;
-- the laws that prove them, and whether each is a frame law or a direct law;
-- whether the trust boundary grew, and if it did, why;
+- the law files added or reworded, by name;
+- the laws in them, and whether each is a frame law or a direct law;
+- any trusted assumption added, where its comment lives, and why;
 - whether this is a behavior change to a released guarantee;
-- anything left pending, and the plan for it.
+- anything only partly proved, and the plan for it.
 
 Write it plainly. This is the record reviewers use to check that the change
 kept the project's guarantees without re-running anything.
