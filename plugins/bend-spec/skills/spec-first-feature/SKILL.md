@@ -69,25 +69,28 @@ Which of these it is decides what you are allowed to edit:
 | Change to a guaranteed behavior | The file's prose and its laws, together. This is a behavior change, so say so in the PR |
 | Bug where code breaks a guarantee | Nothing. The guarantee was only partly proved, or the bug is in code that is trusted, not proved. Find out which |
 | Bug where the guarantee was missing or wrong | A new or reworded law file with a law that would have caught the bug |
-| Accidental behavior not worth guaranteeing | Nothing. Fix it, with a quantified law stated in a proof file, and note it in the law inventory (`docs/rfc/*-law-inventory.md`) if the project keeps one |
+| Bug in internal behavior, not interface | A law file holding the fixed behavior in place; its prose says it is internal, not interface |
 | Refactor | Nothing. Proof files and lemmas may be rewritten |
 
 Law files are written by agents, never by the user, but each one is a
-guarantee the user owns. Ask the user before changing what an existing law
+claim the user owns: behavior that must not change without review. That
+covers the interface a library guarantees and internal behavior alike; the
+prose says which it is. Ask the user before changing what an existing law
 file says, and never edit one to make a proof pass. If the proof won't go
 through, the code or the plan is wrong, not the claim. Deleting a law,
 narrowing a file's prose, or moving a claim from a law to a trusted
 comment weakens a guarantee, so it is also a behavior change that needs
 review.
 
-Not every bug earns a law file. A law file is a promise to keep the
-behavior forever. If the old behavior was an accident and nobody should
-rely on the new one either, fix it without one: ez did this for `.ez`/`bin`
-being created in the current directory, and for `ez doctor` on a project
-with no deps. A law stated in a proof file is checked by the gate, but
-LAWS.bend doesn't reach it, so it promises nothing. Ask the user when it
-isn't clear which kind a bug is. Padding `laws/` with incidental
-guarantees makes the real ones harder to find.
+`laws/` is not only the interface. Anything that should not change
+without someone deciding it should, a fixed bug included, gets a law file,
+whether or not callers see it. What sets interface apart is the prose: a
+law file says when it states internal behavior (a module under `src/`, a
+helper's contract), so a reader knows it holds code in place rather than
+promising callers anything. A law stated in a proof file is scaffolding
+for a proof: the gate checks it, but it holds nothing in place, so never
+put behavior there to keep it out of `laws/`. Message wording and other
+output nobody should rely on gets no law at all.
 
 ## 2. Write the guarantee's prose first
 

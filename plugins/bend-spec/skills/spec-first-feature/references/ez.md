@@ -69,11 +69,11 @@ near-duplicate:
   Effect constructor that writes or removes (WP2 adds `Drop`), make
   `writes.one` count it, or the law stops covering it.
 
-Some accidental behavior was fixed without becoming a guarantee: `.ez` and
-`bin` being created in the current directory, and `ez doctor` failing a
-project with no deps. Those have quantified laws that promise nothing and a
-note in `docs/rfc/ez-law-inventory.md`. Treat similar incidental fixes the same way
-(SKILL.md step 1).
+Some accidental behavior was fixed during the spec work: `.ez` and `bin`
+being created in the current directory, and `ez doctor` failing a project
+with no deps. The fixed behavior should not come back, so its laws belong
+in law files whose prose says they are internal, not interface (SKILL.md
+step 1).
 
 ## Where ez's trust lives
 
