@@ -20,8 +20,12 @@ A fleet is a set of Bend repos that pin each other. The goal of a run:
 
 Content and tooling are separate on purpose. A package's hub hash is the
 walk from its entry: the imported `.bend` and effect files, plus a LICENSE
-from each directory that holds a walked file. `flake.lock`, `ez.toml` tools, READMEs, and files the entry doesn't
-reach are not part of it. So "latest" is judged by content: a leaf whose
+from each directory that holds a walked file, and (since bend 2.0.40) the
+`README.md` beside the entry. `flake.lock`, `ez.toml` tools, any other
+README, and files the entry doesn't reach are not part of it. A release
+published before 2.0.40 has no README in its hash, so ez 1.14+ hashing that
+tag's checkout gets a different hash than the hub serves: depend on it by
+hub name (step 3.1), which takes the hub's hash. So "latest" is judged by content: a leaf whose
 default branch only moved its `flake.lock` is still at its latest release.
 This also breaks the cycle you'd otherwise hit, where ez pins shake by rev
 while shake's flake pins ez. Package edges go leaves-first, and tooling is
@@ -116,7 +120,15 @@ updated in one final pass.
   edge, and every check still passed: a Base change that alters what a
   package outputs is the maintainer's call, so stop and ask, even when the
   new behaviour looks more correct); a Nat crosses to JS as a number, not a BigInt; `--publish` mines a
-  proof of work (below). Survey first: fetch each repo's deps and run its
+  proof of work (below). From 2.0.38 to 2.0.40: Base
+  declares `type Tool` (`Tool.Mouse`, `Tool.Finger`, `Tool.Pen`) and Event
+  gains `Press`, `Leave`, `Lost` and `Focus`, so a user `type Tool` or a
+  constructor of one of those names is a duplicate declaration (ezhttp's
+  internal `Step.Lost` became `Dropped`, ezmcp's public `Tool` became
+  `ToolSpec`, ez's `Tool` became `Cli`); `--publish` sends the `README.md`
+  beside the entry, inside the hash (over 64 KB refused), so ez < 1.14
+  computes a different hash for any package with one; 2.0.39's
+  `--publish` refuses files outside the entry's directory. Survey first: fetch each repo's deps and run its
   entry and every PROOF.bend on the new bend (`references/porting.md`).
   bend stops at the first error in a file, so a survey line is a lower
   bound: ezjson showed one broken proof and had five. A proof that fails
@@ -186,15 +198,20 @@ before ez and ez's `[tools.bolt]` can then point at the new bolt.
 
 For each package in order:
 
-1. **Bump deps** on a branch:
-   `BEND_LIB=$PWD/.ez/lib $EZ add <git-url> <tag> <entry>` per dependency.
-   Check that the printed `import 0x…` hash is the one you published for that
-   tag. Then rewrite **every** `import 0x<old>/<path>` in tracked `.bend`
-   files (LAWS, PROOF, bench and tests too, not only the entry's walk) to the
-   new hash **and the new path**. Layouts move between releases, e.g.
-   `value.bend` became `src/value.bend`. Then run `$EZ lock`. `ez lock`
-   refuses an import of a hash that ez.toml doesn't name and the hub doesn't
-   serve, which is how you find the stragglers.
+1. **Bump deps** on a branch, **by hub name**: fleet packages depend on
+   each other through versioned hub imports, `import <name>@X.Y.Z.0/<path>`,
+   not git pins and `import 0x…/` (those predate bend's named imports).
+   `BEND_LIB=$PWD/.ez/lib $EZ add <name>@X.Y.Z.0` records
+   `hub = "<name>@X.Y.Z.0"` with the hash the hub answers; a git-pinned dep
+   of the same name has to go first (`$EZ remove <dep>`). Then rewrite
+   **every** import of the old version in tracked `.bend` files (LAWS,
+   PROOF, bench and tests too, not only the entry's walk) to the new name
+   **and the new path**. Layouts move between releases, e.g. `value.bend`
+   became `src/value.bend`. Then run `$EZ lock`, which refuses an import
+   that ez.toml doesn't name, which is how you find the stragglers. Only a
+   dependency with no hub name (a third-party package published by hash,
+   e.g. noah-emp/bend-sha256) stays a git pin. The hub can time out a TLS
+   handshake for a minute at a time: `ez add` then writes nothing, so retry.
 2. **Breaking changes**: read the dependency's CHANGELOG. Port the dependent to
    the dependency's **public interface** only (its `main.bend`). A dependent
    must not import or prove a dependency's internals (`src/…`). It takes what
@@ -349,6 +366,15 @@ In every repo, one PR:
   group) to warn, with a comment. Open one issue per repo with counts by rule
   and file, and link it from the commit. The maintainer decides when the
   levels go back up.
+- **bolt 1.26 regrouped the rules.** `unsafe` (and `table`, `hoist`,
+  `ring`, `unit`, `scan`) are retired: a bolt.bend that still sets one gets
+  C011, so delete the def. `coverage` (L001) and `closed` are off unless
+  bolt.bend names them, so a repo that relied on the `laws` group silently
+  loses its coverage gate (and its old `# noqa: L001` comments turn into
+  S005 "silences nothing" errors): add `def coverage() -> String: "error"`,
+  not a demoted S005. bolt 1.27's coverage is stricter than 1.22's; set it
+  to warn where it newly fires and file the list (ezjson#91, eztoml#94,
+  episteme#3).
 - **`trace` is gone.** On the first bolt release with bolt#257, delete
   `def trace()` from `bolt.bend`: `trace` (L005) was removed, and the
   setting is now an unknown-setting finding (C011). A repo that still keeps
@@ -357,8 +383,10 @@ In every repo, one PR:
 
 ## 5. READMEs (a plain Bend user)
 
-For each package, in the tooling PR or a `docs:` PR (docs don't release, and
-README isn't part of the hash):
+For each package, in the tooling PR or a `docs:` PR. Since bend 2.0.40 the
+`README.md` beside the entry is part of the package and its hash, so a README
+edit reaches the hub only with the next release; a `docs:` commit doesn't cut
+one, so the hub keeps the old README until something else releases:
 
 - **Install** leads with plain Bend and the hub name:
   `import <name>@X.Y.Z.0/main.bend as X`, which bend resolves at the hub and
