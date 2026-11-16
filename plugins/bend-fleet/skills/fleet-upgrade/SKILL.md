@@ -134,6 +134,11 @@ updated in one final pass.
   bound: ezjson showed one broken proof and had five. A proof that fails
   only because it imports an effect is fixed by moving the effect into a
   sibling module no law file imports, not by exempting it.
+- **Never use the `bend`, `ez` or `bolt` on PATH.** A machine-wide install
+  drifts from the fleet (one sat at bend 2.0.28 while the fleet was on
+  2.0.40 and failed every `bend PROOF.bend`), and an agent's shell runs no
+  direnv hook. Run tools from the repo's flake (`nix develop -c bend …`) or
+  by store path from `nix build`.
 - **ez carries its own bend.** The ez binary's wrapper puts the bend ez was
   built with first on PATH, so `ez test` and `ez prove` from an ez built on
   the old bend run the old bend, whatever is on your PATH. Until ez
@@ -238,6 +243,10 @@ For each package in order:
    or `feat(deps):`, or `!` for a breaking change. Repos here use
    `versioning: always-bump-minor`, so breaking changes bump the minor, never
    the major. Push, open a PR, and `gh pr merge --squash --auto`.
+   A squash commit's subject is the **PR title**: a PR titled `build: …`
+   whose branch also holds `fix:` commits releases nothing. Title the PR
+   with the type that should release (`fix(lint): …`), or pass `--subject`.
+   If one already merged, add `BEGIN_COMMIT_OVERRIDE` (step 5) to its body.
    When the commit carries a `BREAKING CHANGE:` footer, merge with the
    commit's own message (`gh pr merge N --squash --subject "<subject> (#N)"
    --body "<the commit body>"`): a squash otherwise takes the PR body, and
@@ -359,22 +368,33 @@ In every repo, one PR:
 - `nix flake update ez bend`, then `nix flake check`, then PR with auto-merge.
   Use `chore:` or `build:`, since this doesn't change package content and
   needs no release. `references/flake.md` has the template.
-- **A new bolt finds new lint.** Rules added since the old pin can fail a
-  repo whose `bolt.bend` sets groups to `error`. Don't hold the upgrade
-  hostage, and don't hide the debt. Set only the newly firing rules
-  (`def closed() -> String: "warn"`, a per-slug level, narrower than the
-  group) to warn, with a comment. Open one issue per repo with counts by rule
-  and file, and link it from the commit. The maintainer decides when the
-  levels go back up.
+- **A new bolt finds new lint: fix it.** Rules added since the old pin
+  fire on code that passed before. Fix every finding `bolt check` reports,
+  warnings included, in the same run, so each repo checks clean. Don't lower
+  a rule to `warn` to get green and don't file "lint debt" issues: a parked
+  level is debt nobody pays. Breaking a package's public API to fix a
+  finding is fine; it ships as `feat(lint)!:` with a `BREAKING CHANGE:`
+  footer. Coverage (L001) means a law reaches the def: move pure code out of
+  modules that run effects and give it a law, delete dead code, and mark
+  only true IO drivers `# noqa: L001 <reason>`. A closed law (L002) is
+  quantified or, when a general law already implies it, deleted; a fixture
+  check that is neither moves to a test the flake runs, never just away.
+  A finding whose own advice is wrong (a generated data table under S010)
+  is a bolt bug: fix the rule in bolt and re-pin, rather than noqa it.
+  Large repos suit one subagent per repo; give each the bend to use
+  explicitly (see §0: the `bend` on PATH may not be the fleet's).
 - **bolt 1.26 regrouped the rules.** `unsafe` (and `table`, `hoist`,
   `ring`, `unit`, `scan`) are retired: a bolt.bend that still sets one gets
   C011, so delete the def. `coverage` (L001) and `closed` are off unless
   bolt.bend names them, so a repo that relied on the `laws` group silently
   loses its coverage gate (and its old `# noqa: L001` comments turn into
   S005 "silences nothing" errors): add `def coverage() -> String: "error"`,
-  not a demoted S005. bolt 1.27's coverage is stricter than 1.22's; set it
-  to warn where it newly fires and file the list (ezjson#91, eztoml#94,
-  episteme#3).
+  not a demoted S005. bolt 1.27's coverage is stricter than 1.22's; fix
+  what it newly finds, as above.
+- **bolt 1.65 lints with `bolt check`.** Bare `bolt`, `bolt lint` and
+  `bolt <file>` no longer lint, so `[tools.bolt]` ≥ v1.65.0 needs ez ≥ 1.16.0
+  in the flake (its mkLint runs `bolt check` for such a pin): move both in
+  the same PR.
 - **`trace` is gone.** On the first bolt release with bolt#257, delete
   `def trace()` from `bolt.bend`: `trace` (L005) was removed, and the
   setting is now an unknown-setting finding (C011). A repo that still keeps
